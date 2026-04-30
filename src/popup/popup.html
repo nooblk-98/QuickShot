@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>QuickShot</title>
+  <link rel="stylesheet" href="popup.css" />
+</head>
+<body>
+  <div class="header">
+    <svg class="logo" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+      <circle cx="12" cy="13" r="4"/>
+    </svg>
+    <span class="title">QuickShot</span>
+  </div>
+
+  <div class="buttons">
+    <button id="btn-visible" class="btn btn-primary">Capture Visible Area</button>
+    <button id="btn-fullpage" class="btn btn-secondary">Capture Full Page</button>
+    <button id="btn-area" class="btn btn-outline">Select Area</button>
+  </div>
+
+  <div class="divider"></div>
+
+  <div class="frame-section">
+    <div class="frame-label">Frame Capture</div>
+
+    <select id="dim-preset" class="dim-select">
+      <option value="1920x1080">1920 × 1080 — Full HD</option>
+      <option value="1280x720">1280 × 720 — HD</option>
+      <option value="1366x768">1366 × 768 — Laptop</option>
+      <option value="1440x900">1440 × 900 — MacBook</option>
+      <option value="2560x1440">2560 × 1440 — 2K</option>
+      <option value="800x600">800 × 600 — Small</option>
+      <option value="375x667">375 × 667 — iPhone SE</option>
+      <option value="390x844">390 × 844 — iPhone 14</option>
+      <option value="1024x768">1024 × 768 — iPad</option>
+      <option value="custom">Custom…</option>
+    </select>
+
+    <div id="custom-dims" class="custom-dims hidden">
+      <input type="number" id="custom-w" class="dim-input" placeholder="Width" min="10" max="9999" />
+      <span class="dim-x">×</span>
+      <input type="number" id="custom-h" class="dim-input" placeholder="Height" min="10" max="9999" />
+    </div>
+
+    <button id="btn-frame" class="btn btn-frame">Place Frame</button>
+  </div>
+
+  <div class="divider"></div>
+
+  <div class="options">
+    <label class="checkbox-label">
+      <input type="checkbox" id="opt-download" checked />
+      <span>Download</span>
+    </label>
+    <label class="checkbox-label">
+      <input type="checkbox" id="opt-clipboard" checked />
+      <span>Copy to Clipboard</span>
+    </label>
+  </div>
+
+  <div id="status" class="status"></div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(node -e ' *)"
+    ],
+    "additionalDirectories": [
+      "/home/lahiru/Documents/QuickShot/icons"
+    ]
+  }
+}
