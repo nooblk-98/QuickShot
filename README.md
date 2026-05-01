@@ -1,6 +1,10 @@
-# QuickShot
+<p align="center">
+  <img src="logo.png" alt="QuickShot" width="160" />
+</p>
 
-A lightweight Chrome extension for fast, precise screenshots. Capture visible area, full page, or a custom-selected region in one click.
+<h1 align="center">QuickShot</h1>
+
+<p align="center">A lightweight Chrome extension for fast, precise screenshots. Capture visible area, full page, or a custom-selected region in one click.</p>
 
 ---
 
