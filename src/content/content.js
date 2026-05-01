@@ -215,7 +215,9 @@ window.__quickshotLoaded = true;
         await captureRect(x, y, w, h);
       });
 
-      reuseBtn.addEventListener('click', async () => {
+      reuseBtn.addEventListener('mousedown', e => { e.stopPropagation(); e.preventDefault(); });
+      reuseBtn.addEventListener('click', async e => {
+        e.stopPropagation();
         if (!savedRect) return;
         await captureRect(savedRect.x, savedRect.y, savedRect.w, savedRect.h);
       });
