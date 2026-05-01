@@ -1,18 +1,20 @@
 chrome.runtime.onInstalled.addListener(() => {
-  chrome.contextMenus.create({
-    id: 'quickshot-visible',
-    title: 'QuickShot: Capture Visible Area',
-    contexts: ['page', 'image', 'link']
-  });
-  chrome.contextMenus.create({
-    id: 'quickshot-fullpage',
-    title: 'QuickShot: Capture Full Page',
-    contexts: ['page']
-  });
-  chrome.contextMenus.create({
-    id: 'quickshot-area',
-    title: 'QuickShot: Select Area',
-    contexts: ['page']
+  chrome.contextMenus.removeAll(() => {
+    chrome.contextMenus.create({
+      id: 'quickshot-visible',
+      title: 'QuickShot: Capture Visible Area',
+      contexts: ['page', 'image', 'link']
+    });
+    chrome.contextMenus.create({
+      id: 'quickshot-fullpage',
+      title: 'QuickShot: Capture Full Page',
+      contexts: ['page']
+    });
+    chrome.contextMenus.create({
+      id: 'quickshot-area',
+      title: 'QuickShot: Select Area',
+      contexts: ['page']
+    });
   });
 });
 
