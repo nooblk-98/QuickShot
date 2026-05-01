@@ -55,10 +55,10 @@ window.__quickshotLoaded = true;
       tip.style.cssText = 'position:fixed;background:#7c6af7;color:#fff;font:bold 11px/1.6 -apple-system,sans-serif;padding:1px 7px;border-radius:4px;pointer-events:none;display:none;';
       overlay.appendChild(tip);
 
-      // Capture button shown inside the selection box when a saved selection exists
+      // Capture button shown below the selection box when a saved selection exists
       const reuseBtn = document.createElement('div');
-      reuseBtn.style.cssText = 'position:absolute;bottom:-30px;left:50%;transform:translateX(-50%);background:#7c6af7;color:#fff;font:bold 11px/1.6 -apple-system,sans-serif;padding:4px 14px;border-radius:0 0 6px 6px;pointer-events:auto;cursor:pointer;display:none;white-space:nowrap;z-index:1;';
-      sel.appendChild(reuseBtn);
+      reuseBtn.style.cssText = 'position:fixed;background:#7c6af7;color:#fff;font:bold 11px/1.6 -apple-system,sans-serif;padding:4px 14px;border-radius:0 0 6px 6px;pointer-events:auto;cursor:pointer;display:none;white-space:nowrap;z-index:2147483647;transform:translateX(-50%);';
+      overlay.appendChild(reuseBtn);
 
       const hint = document.createElement('div');
       hint.style.cssText = 'display:none;';
@@ -92,6 +92,10 @@ window.__quickshotLoaded = true;
         tip.style.left = (x+4)+'px';
         tip.style.top  = (y > 24 ? y-22 : y+h+4)+'px';
         tip.style.display = 'block';
+        if (reuseBtn.style.display !== 'none') {
+          reuseBtn.style.left = (x + w / 2) + 'px';
+          reuseBtn.style.top  = (y + h) + 'px';
+        }
       }
 
       function showSavedSelection(r) {
@@ -110,6 +114,8 @@ window.__quickshotLoaded = true;
         updateUI(savedRect);
 
         reuseBtn.textContent = `↵ Capture (${Math.round(w)}×${Math.round(h)})`;
+        reuseBtn.style.left = (x + w / 2) + 'px';
+        reuseBtn.style.top  = (y + h) + 'px';
         reuseBtn.style.display = 'block';
         hint.textContent = 'Drag box to move — drag outside to draw new — ESC to cancel';
       }
