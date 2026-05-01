@@ -1,9 +1,12 @@
 name: Release Extension
 
 on:
+  workflow_dispatch:
   push:
-    tags:
-      - 'v*'
+    branches:
+      - main
+    paths:
+      - 'manifest.json'
 
 jobs:
   release:
@@ -15,9 +18,12 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Get version from tag
+      - name: Get version from manifest.json
         id: version
-        run: echo "VERSION=${GITHUB_REF_NAME}" >> $GITHUB_OUTPUT
+        run: |
+          VERSION=$(jq -r '.version' manifest.json)
+          echo "VERSION=v${VERSION}" >> $GITHUB_OUTPUT
+          echo "RAW_VERSION=${VERSION}" >> $GITHUB_OUTPUT
 
       - name: Build extension zip
         run: |
@@ -30,6 +36,7 @@ jobs:
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ steps.version.outputs.VERSION }}
           name: QuickShot ${{ steps.version.outputs.VERSION }}
           body: |
             ## QuickShot ${{ steps.version.outputs.VERSION }}
