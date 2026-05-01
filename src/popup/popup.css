@@ -99,6 +99,22 @@ body {
   cursor: pointer;
 }
 
+/* ── Footer ──────────────────────────────────────────────── */
+.footer {
+  text-align: center;
+  padding: 6px 8px 8px;
+  font-size: 10px;
+  color: rgba(255,255,255,0.25);
+}
+
+.footer-link {
+  color: #42a5f5;
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.footer-link:hover { text-decoration: underline; }
+
 /* ── Status ──────────────────────────────────────────────── */
 .status-area {
   min-height: 0;
