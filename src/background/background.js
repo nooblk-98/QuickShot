@@ -43,21 +43,6 @@ chrome.runtime.onConnect.addListener(port => {
     });
   }
 
-  if (port.name === 'quickshot-frame') {
-    port.onMessage.addListener(async msg => {
-      if (msg.type === 'FRAME_CAPTURE_STRIP') {
-        try {
-          const dataUrl = await chrome.tabs.captureVisibleTab(null, { format: 'png' });
-          port.postMessage({ type: 'STRIP_RESULT', dataUrl });
-        } catch (e) {
-          port.postMessage({ type: 'STRIP_ERROR', error: e.message });
-        }
-      }
-      if (msg.type === 'FRAME_RESULT') {
-        handleOutput(msg.dataUrl, { download: msg.download, clipboard: msg.clipboard, radius: msg.radius || 0 }, port.sender.tab.id);
-      }
-    });
-  }
 });
 
 // Send to content script, silently ignoring connection errors
@@ -93,17 +78,10 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     sendResponse({ ok: true });
     return true;
   }
-  if (msg.type === 'PLACE_FRAME') {
-    ensureContentScript(msg.tabId).then(() => {
-      safeSendMessage(msg.tabId, { type: 'START_FRAME_CAPTURE', w: msg.w, h: msg.h, options: { download: msg.download, clipboard: msg.clipboard, radius: msg.radius || 0 } });
-    });
-    sendResponse({ ok: true });
-    return true;
-  }
   if (msg.type === 'DOWNLOAD') {
     chrome.downloads.download({
       url: msg.dataUrl,
-      filename: `quickshot-${Date.now()}.png`,
+      filename: `quickshot-${new Date().toISOString().slice(0,19).replace('T','-').replace(/:/g,'-')}.png`,
       saveAs: false
     });
     sendResponse({ ok: true });
@@ -201,7 +179,7 @@ async function handleOutput(dataUrl, options, tabId) {
   if (options.download) {
     chrome.downloads.download({
       url: dataUrl,
-      filename: `quickshot-${Date.now()}.png`,
+      filename: `quickshot-${new Date().toISOString().slice(0,19).replace('T','-').replace(/:/g,'-')}.png`,
       saveAs: false
     });
   }
