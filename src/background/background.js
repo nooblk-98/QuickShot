@@ -38,7 +38,7 @@ chrome.runtime.onConnect.addListener(port => {
         }
       }
       if (msg.type === 'AREA_RESULT') {
-        handleOutput(msg.dataUrl, { download: msg.download, clipboard: msg.clipboard }, port.sender.tab.id);
+        handleOutput(msg.dataUrl, { download: msg.download, clipboard: msg.clipboard, radius: msg.radius || 0 }, port.sender.tab.id);
       }
     });
   }
@@ -54,7 +54,7 @@ chrome.runtime.onConnect.addListener(port => {
         }
       }
       if (msg.type === 'FRAME_RESULT') {
-        handleOutput(msg.dataUrl, { download: msg.download, clipboard: msg.clipboard }, port.sender.tab.id);
+        handleOutput(msg.dataUrl, { download: msg.download, clipboard: msg.clipboard, radius: msg.radius || 0 }, port.sender.tab.id);
       }
     });
   }
@@ -87,12 +87,16 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     return true;
   }
   if (msg.type === 'CAPTURE_AREA') {
-    safeSendMessage(msg.tabId, { type: 'START_AREA_CAPTURE', options: { download: msg.download, clipboard: msg.clipboard } });
+    ensureContentScript(msg.tabId).then(() => {
+      safeSendMessage(msg.tabId, { type: 'START_AREA_CAPTURE', options: { download: msg.download, clipboard: msg.clipboard, radius: msg.radius || 0 } });
+    });
     sendResponse({ ok: true });
     return true;
   }
   if (msg.type === 'PLACE_FRAME') {
-    safeSendMessage(msg.tabId, { type: 'START_FRAME_CAPTURE', w: msg.w, h: msg.h, options: { download: msg.download, clipboard: msg.clipboard } });
+    ensureContentScript(msg.tabId).then(() => {
+      safeSendMessage(msg.tabId, { type: 'START_FRAME_CAPTURE', w: msg.w, h: msg.h, options: { download: msg.download, clipboard: msg.clipboard, radius: msg.radius || 0 } });
+    });
     sendResponse({ ok: true });
     return true;
   }
@@ -111,7 +115,19 @@ async function captureVisible() {
   return { dataUrl };
 }
 
+async function ensureContentScript(tabId) {
+  try {
+    await chrome.scripting.executeScript({
+      target: { tabId },
+      files: ['src/content/content.js']
+    });
+  } catch (_) {
+    // Already injected or page doesn't allow scripts — ignore
+  }
+}
+
 async function captureFullPage(tabId) {
+  await ensureContentScript(tabId);
   return new Promise((resolve, reject) => {
     chrome.tabs.sendMessage(tabId, { type: 'START_FULL_CAPTURE' }, response => {
       if (chrome.runtime.lastError) return reject(new Error(chrome.runtime.lastError.message));
@@ -121,7 +137,45 @@ async function captureFullPage(tabId) {
   });
 }
 
-function handleOutput(dataUrl, options, tabId) {
+function applyRoundedCornersInTab(tabId, dataUrl, radius) {
+  return chrome.scripting.executeScript({
+    target: { tabId },
+    func: (dataUrl, radius) => {
+      return new Promise(resolve => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          canvas.width  = img.width;
+          canvas.height = img.height;
+          const ctx = canvas.getContext('2d');
+          const r = Math.min(radius, img.width / 2, img.height / 2);
+          ctx.beginPath();
+          ctx.moveTo(r, 0);
+          ctx.lineTo(img.width - r, 0);
+          ctx.quadraticCurveTo(img.width, 0, img.width, r);
+          ctx.lineTo(img.width, img.height - r);
+          ctx.quadraticCurveTo(img.width, img.height, img.width - r, img.height);
+          ctx.lineTo(r, img.height);
+          ctx.quadraticCurveTo(0, img.height, 0, img.height - r);
+          ctx.lineTo(0, r);
+          ctx.quadraticCurveTo(0, 0, r, 0);
+          ctx.closePath();
+          ctx.clip();
+          ctx.drawImage(img, 0, 0);
+          resolve(canvas.toDataURL('image/png'));
+        };
+        img.src = dataUrl;
+      });
+    },
+    args: [dataUrl, radius]
+  }).then(results => results[0].result);
+}
+
+async function handleOutput(dataUrl, options, tabId) {
+  const radius = options.radius || 0;
+  if (radius > 0) {
+    try { dataUrl = await applyRoundedCornersInTab(tabId, dataUrl, radius); } catch (_) {}
+  }
   if (options.download) {
     chrome.downloads.download({
       url: dataUrl,

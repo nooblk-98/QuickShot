@@ -1,14 +1,47 @@
-const btnVisible  = document.getElementById('btn-visible');
-const btnFullpage = document.getElementById('btn-fullpage');
-const btnArea     = document.getElementById('btn-area');
-const btnFrame    = document.getElementById('btn-frame');
-const dimPreset   = document.getElementById('dim-preset');
-const customDims  = document.getElementById('custom-dims');
-const customW     = document.getElementById('custom-w');
-const customH     = document.getElementById('custom-h');
-const optDownload = document.getElementById('opt-download');
-const optClipboard= document.getElementById('opt-clipboard');
-const statusEl    = document.getElementById('status');
+const btnVisible   = document.getElementById('btn-visible');
+const btnFullpage  = document.getElementById('btn-fullpage');
+const btnArea      = document.getElementById('btn-area');
+const statusEl     = document.getElementById('status');
+const radiusSlider = document.getElementById('corner-radius');
+const radiusValue  = document.getElementById('radius-value');
+
+function syncSlider() {
+  const pct = (radiusSlider.value / radiusSlider.max) * 100;
+  radiusSlider.style.setProperty('--pct', pct + '%');
+  radiusValue.textContent = radiusSlider.value;
+}
+chrome.storage.sync.get({ radius: 0 }, s => {
+  radiusSlider.value = s.radius;
+  syncSlider();
+});
+radiusSlider.addEventListener('input', () => {
+  syncSlider();
+  chrome.storage.sync.set({ radius: parseInt(radiusSlider.value, 10) });
+});
+
+function applyRoundedCorners(dataUrl, radius) {
+  return new Promise(resolve => {
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = img.width; canvas.height = img.height;
+      const ctx = canvas.getContext('2d');
+      const r = Math.min(radius, img.width / 2, img.height / 2);
+      ctx.beginPath();
+      ctx.moveTo(r, 0); ctx.lineTo(img.width - r, 0);
+      ctx.quadraticCurveTo(img.width, 0, img.width, r);
+      ctx.lineTo(img.width, img.height - r);
+      ctx.quadraticCurveTo(img.width, img.height, img.width - r, img.height);
+      ctx.lineTo(r, img.height);
+      ctx.quadraticCurveTo(0, img.height, 0, img.height - r);
+      ctx.lineTo(0, r); ctx.quadraticCurveTo(0, 0, r, 0);
+      ctx.closePath(); ctx.clip();
+      ctx.drawImage(img, 0, 0);
+      resolve(canvas.toDataURL('image/png'));
+    };
+    img.src = dataUrl;
+  });
+}
 
 function setStatus(text, type = '') {
   statusEl.textContent = text;
@@ -19,7 +52,6 @@ function setLoading(loading) {
   btnVisible.disabled  = loading;
   btnFullpage.disabled = loading;
   btnArea.disabled     = loading;
-  btnFrame.disabled    = loading;
 }
 
 async function getCurrentTab() {
@@ -37,63 +69,18 @@ function isRestrictedUrl(url = '') {
          url.startsWith('edge://') || url.startsWith('about:');
 }
 
-// Show/hide custom dimension inputs
-dimPreset.addEventListener('change', () => {
-  customDims.classList.toggle('hidden', dimPreset.value !== 'custom');
-});
-
-// Place Frame button
-btnFrame.addEventListener('click', async () => {
-  const download  = optDownload.checked;
-  const clipboard = optClipboard.checked;
-
-  if (!download && !clipboard) {
-    setStatus('Select at least one output option.', 'error');
-    return;
-  }
-
-  const tab = await getCurrentTab();
-  if (isRestrictedUrl(tab.url)) {
-    setStatus('Cannot capture chrome:// pages.', 'error');
-    return;
-  }
-
-  let w, h;
-  if (dimPreset.value === 'custom') {
-    w = parseInt(customW.value, 10);
-    h = parseInt(customH.value, 10);
-    if (!w || !h || w < 10 || h < 10) {
-      setStatus('Enter valid width and height.', 'error');
-      return;
-    }
-  } else {
-    [w, h] = dimPreset.value.split('x').map(Number);
-  }
-
-  const tabId = await getCurrentTabId();
-  chrome.runtime.sendMessage({ type: 'PLACE_FRAME', tabId, w, h, download, clipboard });
-  window.close();
-});
-
 async function handleCapture(type) {
-  const download  = optDownload.checked;
-  const clipboard = optClipboard.checked;
-
-  if (!download && !clipboard) {
-    setStatus('Select at least one output option.', 'error');
-    return;
-  }
-
   const tab = await getCurrentTab();
   if (isRestrictedUrl(tab.url)) {
     setStatus('Cannot capture chrome:// pages.', 'error');
     return;
   }
 
-  // Fire-and-forget — popup closes, background handles everything
+  const radius = parseInt(radiusSlider.value, 10);
+
   if (type === 'CAPTURE_AREA') {
     const tabId = await getCurrentTabId();
-    chrome.runtime.sendMessage({ type: 'CAPTURE_AREA', tabId, download, clipboard });
+    chrome.runtime.sendMessage({ type: 'CAPTURE_AREA', tabId, download: true, clipboard: true, radius });
     window.close();
     return;
   }
@@ -105,22 +92,15 @@ async function handleCapture(type) {
     const tabId  = await getCurrentTabId();
     const result = await chrome.runtime.sendMessage({ type, tabId });
 
+    if (!result) throw new Error('No response from background. Try reloading the page.');
     if (result?.error) throw new Error(result.error);
 
-    const dataUrl = result.dataUrl;
-    const actions = [];
+    const dataUrl = radius > 0 ? await applyRoundedCorners(result.dataUrl, radius) : result.dataUrl;
+    await chrome.runtime.sendMessage({ type: 'DOWNLOAD', dataUrl });
+    const blob = await (await fetch(dataUrl)).blob();
+    await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
 
-    if (download) {
-      await chrome.runtime.sendMessage({ type: 'DOWNLOAD', dataUrl });
-      actions.push('Downloaded');
-    }
-    if (clipboard) {
-      const blob = await (await fetch(dataUrl)).blob();
-      await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
-      actions.push('Copied to clipboard');
-    }
-
-    setStatus(actions.join(' · '), 'success');
+    setStatus('Downloaded · Copied to clipboard', 'success');
   } catch (err) {
     setStatus('Error: ' + err.message, 'error');
   } finally {

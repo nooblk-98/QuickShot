@@ -3,7 +3,7 @@
   "name": "QuickShot",
   "version": "1.0.0",
   "description": "Capture visible area or full page screenshots with one click.",
-  "permissions": ["activeTab", "scripting", "downloads", "contextMenus", "clipboardWrite"],
+  "permissions": ["activeTab", "scripting", "downloads", "contextMenus", "clipboardWrite", "storage"],
   "host_permissions": ["<all_urls>"],
   "background": {
     "service_worker": "src/background/background.js"
