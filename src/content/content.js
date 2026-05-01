@@ -61,8 +61,7 @@ window.__quickshotLoaded = true;
       sel.appendChild(reuseBtn);
 
       const hint = document.createElement('div');
-      hint.textContent = 'Drag to select — ESC to cancel';
-      hint.style.cssText = 'position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.7);color:#fff;font:12px/1.6 -apple-system,sans-serif;padding:4px 12px;border-radius:6px;pointer-events:none;';
+      hint.style.cssText = 'display:none;';
       overlay.appendChild(hint);
 
       document.documentElement.appendChild(overlay);
