@@ -114,6 +114,7 @@ body {
 }
 
 .footer-link:hover { text-decoration: underline; }
+.footer-link.kofi { color: #ff5e5b; }
 
 /* ── Status ──────────────────────────────────────────────── */
 .status-area {
