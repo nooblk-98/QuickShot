@@ -75,11 +75,11 @@ function safeSendMessage(tabId, msg) {
 
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   if (msg.type === 'CAPTURE_VISIBLE') {
-    captureVisible().then(sendResponse).catch(err => sendResponse({ error: err.message }));
+    captureVisible(msg.tabId).then(sendResponse).catch(err => sendResponse({ error: err.message }));
     return true;
   }
   if (msg.type === 'CAPTURE_STRIP') {
-    captureVisible().then(sendResponse).catch(err => sendResponse({ error: err.message }));
+    captureVisible(msg.tabId).then(sendResponse).catch(err => sendResponse({ error: err.message }));
     return true;
   }
   if (msg.type === 'CAPTURE_FULL_PAGE') {
@@ -110,9 +110,31 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   }
 });
 
-async function captureVisible() {
+async function captureVisible(tabId) {
   const dataUrl = await chrome.tabs.captureVisibleTab(null, { format: 'png' });
-  return { dataUrl };
+  if (!tabId) return { dataUrl };
+
+  // Crop out the scrollbar by using clientWidth/clientHeight (excludes scrollbars)
+  const cropped = await chrome.scripting.executeScript({
+    target: { tabId },
+    func: (dataUrl) => new Promise(resolve => {
+      const img = new Image();
+      img.onload = () => {
+        const dpr = window.devicePixelRatio || 1;
+        const w = Math.round(document.documentElement.clientWidth * dpr);
+        const h = Math.round(document.documentElement.clientHeight * dpr);
+        if (w >= img.width && h >= img.height) { resolve(dataUrl); return; }
+        const canvas = document.createElement('canvas');
+        canvas.width = w; canvas.height = h;
+        canvas.getContext('2d').drawImage(img, 0, 0, w, h, 0, 0, w, h);
+        resolve(canvas.toDataURL('image/png'));
+      };
+      img.src = dataUrl;
+    }),
+    args: [dataUrl]
+  }).then(r => r[0].result).catch(() => dataUrl);
+
+  return { dataUrl: cropped };
 }
 
 async function ensureContentScript(tabId) {
@@ -204,7 +226,7 @@ async function handleCapture(tabId, type, options) {
     } else if (type === 'CAPTURE_AREA') {
       safeSendMessage(tabId, { type: 'START_AREA_CAPTURE', options });
     } else {
-      const { dataUrl } = await captureVisible();
+      const { dataUrl } = await captureVisible(tabId);
       handleOutput(dataUrl, options, tabId);
     }
   } catch (e) {
