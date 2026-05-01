@@ -55,10 +55,10 @@ window.__quickshotLoaded = true;
       tip.style.cssText = 'position:fixed;background:#7c6af7;color:#fff;font:bold 11px/1.6 -apple-system,sans-serif;padding:1px 7px;border-radius:4px;pointer-events:none;display:none;';
       overlay.appendChild(tip);
 
-      // "Press Enter to reuse" button shown when a saved selection exists
+      // Capture button shown inside the selection box when a saved selection exists
       const reuseBtn = document.createElement('div');
-      reuseBtn.style.cssText = 'position:fixed;bottom:50px;left:50%;transform:translateX(-50%);background:#7c6af7;color:#fff;font:bold 11px/1.6 -apple-system,sans-serif;padding:4px 14px;border-radius:6px;pointer-events:auto;cursor:pointer;display:none;white-space:nowrap;';
-      overlay.appendChild(reuseBtn);
+      reuseBtn.style.cssText = 'position:absolute;bottom:-30px;left:50%;transform:translateX(-50%);background:#7c6af7;color:#fff;font:bold 11px/1.6 -apple-system,sans-serif;padding:4px 14px;border-radius:0 0 6px 6px;pointer-events:auto;cursor:pointer;display:none;white-space:nowrap;z-index:1;';
+      sel.appendChild(reuseBtn);
 
       const hint = document.createElement('div');
       hint.textContent = 'Drag to select — ESC to cancel';
@@ -110,7 +110,7 @@ window.__quickshotLoaded = true;
         moveHandle.style.display = 'block';
         updateUI(savedRect);
 
-        reuseBtn.textContent = `↵ Capture (${Math.round(w)}×${Math.round(h)}) — drag box to reposition`;
+        reuseBtn.textContent = `↵ Capture (${Math.round(w)}×${Math.round(h)})`;
         reuseBtn.style.display = 'block';
         hint.textContent = 'Drag box to move — drag outside to draw new — ESC to cancel';
       }
