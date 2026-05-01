@@ -41,10 +41,13 @@ jobs:
           body: |
             ## QuickShot ${{ steps.version.outputs.VERSION }}
 
-            ### Install
+            ### Install from Chrome Web Store
+            Coming soon on the Chrome Web Store.
+
+            ### Manual Install (Developer Mode)
             1. Download `quickshot-${{ steps.version.outputs.VERSION }}.zip` below
-            2. Unzip it
-            3. Open `chrome://extensions`, enable Developer mode
+            2. Unzip the folder
+            3. Open `chrome://extensions` and enable Developer mode
             4. Click Load unpacked and select the unzipped folder
 
             ### Whats new
