@@ -1,0 +1,47 @@
+name: Release Extension
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Get version from tag
+        id: version
+        run: echo "VERSION=${GITHUB_REF_NAME}" >> $GITHUB_OUTPUT
+
+      - name: Build extension zip
+        run: |
+          zip -r quickshot-${{ steps.version.outputs.VERSION }}.zip \
+            manifest.json \
+            src/ \
+            logo.png \
+            --exclude "*.DS_Store"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: QuickShot ${{ steps.version.outputs.VERSION }}
+          body: |
+            ## QuickShot ${{ steps.version.outputs.VERSION }}
+
+            ### Install
+            1. Download `quickshot-${{ steps.version.outputs.VERSION }}.zip` below
+            2. Unzip it
+            3. Open `chrome://extensions`, enable Developer mode
+            4. Click Load unpacked and select the unzipped folder
+
+            ### Whats new
+            See commit history for changes in this release.
+          files: quickshot-${{ steps.version.outputs.VERSION }}.zip
+          draft: false
+          prerelease: false
