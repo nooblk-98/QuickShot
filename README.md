@@ -6,6 +6,10 @@
 
 <p align="center">A lightweight Chrome extension for fast, precise screenshots. Capture visible area, full page, or a custom-selected region in one click.</p>
 
+<p align="center">
+  <img src="images/app.png" alt="QuickShot Preview" width="100%" />
+</p>
+
 ---
 
 ## Features
