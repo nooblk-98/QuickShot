@@ -1,16 +1,16 @@
 # QuickShot
 
-A lightweight Chrome extension for fast, precise screenshots — capture visible area, full page, or a custom-selected region in one click.
+A lightweight Chrome extension for fast, precise screenshots. Capture visible area, full page, or a custom-selected region in one click.
 
 ---
 
 ## Features
 
-- **Capture Selected Area** — drag to select any region on screen. The last selection is remembered and shown pre-drawn next time so you can reuse the same size across multiple pages. Drag the box to reposition it, or draw a new one.
-- **Capture Visible Area** — screenshots the current viewport instantly.
-- **Capture Full Page** — stitches the entire scrollable page into one image.
-- **Rounded Corners** — apply a corner radius to any capture.
-- **Auto save + clipboard** — every screenshot is downloaded and copied to clipboard simultaneously.
+- **Capture Selected Area**: drag to select any region on screen. The last selection is remembered and shown pre-drawn next time so you can reuse the same size across multiple pages. Drag the box to reposition it, or draw a new one.
+- **Capture Visible Area**: screenshots the current viewport instantly.
+- **Capture Full Page**: stitches the entire scrollable page into one image.
+- **Rounded Corners**: apply a corner radius to any capture.
+- **Auto save + clipboard**: every screenshot is downloaded and copied to clipboard simultaneously.
 
 ---
 
@@ -30,7 +30,7 @@ Click the extension icon to open the menu.
 
 | Button | What it does |
 |---|---|
-| **Capture Selected Area** | Opens an overlay — drag to draw a selection. Previous selection is pre-shown; drag the box to move it or drag outside to draw a new one. Press **Enter** or click the capture button to shoot. Press **ESC** to cancel. |
+| **Capture Selected Area** | Opens an overlay. Drag to draw a selection. Previous selection is pre-shown; drag the box to move it or drag outside to draw a new one. Press **Enter** or click the capture button to shoot. Press **ESC** to cancel. |
 | **Capture Visible Area** | Captures the current viewport immediately. |
 | **Capture Full Page** | Scrolls and stitches the full page into one PNG. |
 
@@ -52,9 +52,9 @@ Every capture is:
 QuickShot/
 ├── src/
 │   ├── background/
-│   │   └── background.js     # Service worker — handles capture, download, clipboard
+│   │   └── background.js     # Service worker: handles capture, download, clipboard
 │   ├── content/
-│   │   └── content.js        # Injected script — area selection overlay, full-page stitching
+│   │   └── content.js        # Injected script: area selection overlay, full-page stitching
 │   ├── popup/
 │   │   ├── popup.html        # Extension popup UI
 │   │   ├── popup.css         # Popup styles
