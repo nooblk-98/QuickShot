@@ -197,6 +197,7 @@ window.__quickshotLoaded = true;
         canvas.width  = Math.round(w * dpr);
         canvas.height = Math.round(h * dpr);
         const ctx = canvas.getContext('2d');
+        ctx.imageSmoothingEnabled = false;
         ctx.drawImage(img, Math.round(x*dpr), Math.round(y*dpr), canvas.width, canvas.height, 0, 0, canvas.width, canvas.height);
         roundCorners(canvas, (options.radius || 0) * dpr);
         resolve(canvas.toDataURL('image/png'));

@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "QuickShot",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "Fast screenshots — capture selected area, visible viewport, or full page. Auto-saves and copies to clipboard.",
   "permissions": ["activeTab", "scripting", "downloads", "contextMenus", "clipboardWrite", "storage"],
   "host_permissions": ["<all_urls>"],

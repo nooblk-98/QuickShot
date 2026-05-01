@@ -83,7 +83,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   if (msg.type === 'DOWNLOAD') {
     chrome.downloads.download({
       url: msg.dataUrl,
-      filename: `quickshot-${new Date().toISOString().slice(0,19).replace('T','-').replace(/:/g,'-')}.png`,
+      filename: `quickshot/quickshot-${new Date().toISOString().slice(0,19).replace('T','-').replace(/:/g,'-')}.png`,
       saveAs: false
     });
     sendResponse({ ok: true });
@@ -106,7 +106,9 @@ async function captureVisible(tabId) {
         if (w >= img.width && h >= img.height) { resolve(dataUrl); return; }
         const canvas = document.createElement('canvas');
         canvas.width = w; canvas.height = h;
-        canvas.getContext('2d').drawImage(img, 0, 0, w, h, 0, 0, w, h);
+        const ctx = canvas.getContext('2d');
+        ctx.imageSmoothingEnabled = false;
+        ctx.drawImage(img, 0, 0, w, h, 0, 0, w, h);
         resolve(canvas.toDataURL('image/png'));
       };
       img.src = dataUrl;
@@ -181,7 +183,7 @@ async function handleOutput(dataUrl, options, tabId) {
   if (options.download) {
     chrome.downloads.download({
       url: dataUrl,
-      filename: `quickshot-${new Date().toISOString().slice(0,19).replace('T','-').replace(/:/g,'-')}.png`,
+      filename: `quickshot/quickshot-${new Date().toISOString().slice(0,19).replace('T','-').replace(/:/g,'-')}.png`,
       saveAs: false
     });
   }
