@@ -10,6 +10,12 @@
   <img src="images/app.png" alt="QuickShot Preview" width="100%" />
 </p>
 
+<p align="center">
+  <a href="https://chromewebstore.google.com/detail/quickshot/plakeppbopfhfgnncfejlkjcmaahlkph" target="_blank">
+    <img src="https://developer.chrome.com/static/docs/webstore/branding/image/iNEddTyWiMfLSwFD6qGq.png" alt="Get QuickShot on Chrome Web Store" height="58" />
+  </a>
+</p>
+
 ---
 
 ## Features
