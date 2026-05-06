@@ -4,19 +4,24 @@ const btnArea      = document.getElementById('btn-area');
 const statusEl     = document.getElementById('status');
 const radiusSlider = document.getElementById('corner-radius');
 const radiusValue  = document.getElementById('radius-value');
+const rememberArea = document.getElementById('remember-area');
 
 function syncSlider() {
   const pct = (radiusSlider.value / radiusSlider.max) * 100;
   radiusSlider.style.setProperty('--pct', pct + '%');
   radiusValue.textContent = radiusSlider.value;
 }
-chrome.storage.sync.get({ radius: 0 }, s => {
+chrome.storage.sync.get({ radius: 0, rememberLastArea: false }, s => {
   radiusSlider.value = s.radius;
+  rememberArea.checked = s.rememberLastArea;
   syncSlider();
 });
 radiusSlider.addEventListener('input', () => {
   syncSlider();
   chrome.storage.sync.set({ radius: parseInt(radiusSlider.value, 10) });
+});
+rememberArea.addEventListener('change', () => {
+  chrome.storage.sync.set({ rememberLastArea: rememberArea.checked });
 });
 
 function applyRoundedCorners(dataUrl, radius) {
@@ -80,7 +85,7 @@ async function handleCapture(type) {
 
   if (type === 'CAPTURE_AREA') {
     const tabId = await getCurrentTabId();
-    chrome.runtime.sendMessage({ type: 'CAPTURE_AREA', tabId, download: true, clipboard: true, radius });
+    chrome.runtime.sendMessage({ type: 'CAPTURE_AREA', tabId, download: true, clipboard: false, radius });
     window.close();
     return;
   }

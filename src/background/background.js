@@ -44,7 +44,6 @@ chrome.runtime.onConnect.addListener(port => {
       }
     });
   }
-
 });
 
 // Send to content script, silently ignoring connection errors

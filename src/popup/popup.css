@@ -99,7 +99,30 @@ body {
   cursor: pointer;
 }
 
-/* ── Footer ──────────────────────────────────────────────── */
+/* ── Options ─────────────────────────────────────────────── */
+.options-section {
+  padding: 4px 8px 6px;
+}
+
+.option-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  font-size: 11px;
+  color: rgba(255,255,255,0.7);
+}
+
+.option-checkbox input[type="checkbox"] {
+  accent-color: #2196f3;
+  cursor: pointer;
+}
+
+.checkbox-label {
+  user-select: none;
+}
+
+/* ── Footer ─────────────────────────────────────────────── */
 .footer {
   text-align: center;
   padding: 6px 8px 8px;
