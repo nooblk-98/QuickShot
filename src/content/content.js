@@ -103,6 +103,7 @@
       let rect = { x: 0, y: 0, w: 0, h: 0 };
       let resizing = false, resizeDir = '', resizeStart = {}, resizeRect = {};
       let selectionComplete = false;
+      let selecting = false;
 
       // Drawing state
       let currentTool = 'pencil';
@@ -303,8 +304,12 @@
 
         const dataUrl = canvas.toDataURL('image/png');
 
-        // Save to storage for next time
-        chrome.storage.local.set({ lastAreaSelection: { x, y, w, h } });
+        // Save to storage (only if rememberLastArea is enabled)
+        chrome.storage.sync.get({ rememberLastArea: false }, ({ rememberLastArea }) => {
+          if (rememberLastArea) {
+            chrome.storage.local.set({ lastAreaSelection: { x, y, w, h } });
+          }
+        });
 
         if (action === 'save') {
           chrome.runtime.sendMessage({ type: 'DOWNLOAD', dataUrl });
@@ -525,6 +530,7 @@
         if (selectionComplete) return;
         startX = endX = e.clientX;
         startY = endY = e.clientY;
+        selecting = true;
         dragging = false;
         resizing = false;
       });
@@ -541,19 +547,18 @@
           return;
         }
         if (selectionComplete) return;
-        if (startX || startY) {
-          endX = e.clientX;
-          endY = e.clientY;
-          rect = {
-            x: Math.min(startX, endX),
-            y: Math.min(startY, endY),
-            w: Math.abs(endX - startX),
-            h: Math.abs(endY - startY)
-          };
-          if (rect.w > 5 && rect.h > 5) {
-            updateSelection();
-            showToolbars();
-          }
+        if (!selecting) return;
+        endX = e.clientX;
+        endY = e.clientY;
+        rect = {
+          x: Math.min(startX, endX),
+          y: Math.min(startY, endY),
+          w: Math.abs(endX - startX),
+          h: Math.abs(endY - startY)
+        };
+        if (rect.w > 5 && rect.h > 5) {
+          updateSelection();
+          showToolbars();
         }
       });
 
@@ -568,6 +573,7 @@
           return;
         }
         if (selectionComplete) return;
+        selecting = false;
         if (rect.w > 5 && rect.h > 5) {
           selectionComplete = true;
           moveHandle.style.display = 'block';
@@ -606,12 +612,14 @@
       });
 
       // Keyboard
-      document.addEventListener('keydown', e => {
+      const onKey = e => {
         if (e.key === 'Escape') { cleanup(); resolve(null); }
-      });
+      };
+      document.addEventListener('keydown', onKey);
 
       function cleanup() {
         overlay.remove();
+        document.removeEventListener('keydown', onKey);
       }
     });
   }
@@ -788,6 +796,7 @@
 
     // Load image
     const img = new Image();
+    let imgLoaded = false;
     img.onload = () => {
       imgW = img.width;
       imgH = img.height;
@@ -800,6 +809,7 @@
       canvas.style.height = (imgH * dispScale) + 'px';
       editorCtx = canvas.getContext('2d');
       editorCtx.drawImage(img, 0, 0);
+      imgLoaded = true;
     };
     img.src = dataUrl;
 
@@ -857,7 +867,7 @@
       }
     });
 
-    document.addEventListener('keydown', function editorKey(e) {
+    const editorKey = e => {
       if (eTextInput) {
         if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); finishEditorText(); }
         if (e.key === 'Escape') { finishEditorText(); }
@@ -865,7 +875,12 @@
       }
       if (e.ctrlKey && e.key === 'z') { e.preventDefault(); editorDrawings.pop(); editorRedraw(); }
       if (e.key === 'Escape') { overlay.remove(); document.removeEventListener('keydown', editorKey); }
-    });
+    };
+    document.addEventListener('keydown', editorKey);
+
+    // Clean up listener when overlay is removed via Save/Copy/Close buttons
+    const origOverlayRemove = overlay.remove.bind(overlay);
+    overlay.remove = () => { document.removeEventListener('keydown', editorKey); origOverlayRemove(); };
 
     function finishEditorText() {
       if (!eTextInput) return;
@@ -879,15 +894,11 @@
     }
 
     function editorRedraw() {
-      if (!editorCtx) return;
-      const i = new Image();
-      i.onload = () => {
-        editorCtx.clearRect(0, 0, canvas.width, canvas.height);
-        editorCtx.drawImage(i, 0, 0);
-        editorDrawings.forEach(d => editorDrawObj(d));
-        if (editorCurrent) editorDrawObj(editorCurrent);
-      };
-      i.src = dataUrl;
+      if (!editorCtx || !imgLoaded) return;
+      editorCtx.clearRect(0, 0, canvas.width, canvas.height);
+      editorCtx.drawImage(img, 0, 0);
+      editorDrawings.forEach(d => editorDrawObj(d));
+      if (editorCurrent) editorDrawObj(editorCurrent);
     }
 
     function editorDrawObj(d) {
