@@ -17,6 +17,11 @@
       sendResponse({ ok: true });
       return true;
     }
+    if (msg.type === 'START_ELEMENT_CAPTURE') {
+      captureElement(msg.options);
+      sendResponse({ ok: true });
+      return true;
+    }
     if (msg.type === 'START_AREA_CAPTURE') {
       const port = chrome.runtime.connect({ name: 'quickshot-area' });
       captureArea(port, msg.options)
@@ -113,6 +118,7 @@
       let drawings = [];
       let currentDrawing = null;
       let isDrawing = false;
+      let textInput = null;
 
       function getHandlePos(dir) {
         const pos = {
@@ -181,6 +187,7 @@
         { id: 'circle', icon: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#333" stroke-width="2"><circle cx="12" cy="12" r="9"/></svg>' },
         { id: 'marker', icon: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#333" stroke-width="2"><path d="m9 11-6 6v3h9l3-3"/><path d="m22 12-4.6 4.6a2 2 0 0 1-2.8 0l-5.2-5.2a2 2 0 0 1 0-2.8L14 4"/></svg>' },
         { id: 'text', icon: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#333" stroke-width="2"><polyline points="4 7 4 4 20 4 20 7"/><line x1="9" y1="20" x2="15" y2="20"/><line x1="12" y1="4" x2="12" y2="20"/></svg>' },
+        { id: 'blur', icon: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#333" stroke-width="2"><circle cx="12" cy="12" r="9"/><line x1="12" y1="3" x2="12" y2="21"/><line x1="3" y1="12" x2="21" y2="12"/><path d="M12 3a9 9 0 0 1 0 18" stroke-dasharray="3 2"/></svg>' },
       ];
       // Map tool id → button element for O(1) active-state updates
       const vToolbarBtns = {};
@@ -266,6 +273,7 @@
 
       function handleAction(id) {
         if (id === 'close') { cleanup(); resolve(null); return; }
+        if (textInput) finishText();
 
         const x = rect.x, y = rect.y, w = rect.w, h = rect.h;
 
@@ -326,46 +334,49 @@
 
       // ── Drawing on canvas ──────────────────────────────────────────────────
 
-      function roundCorners(canvas, radius) {
-        if (!radius || radius <= 0) return canvas;
-        const w = canvas.width, h = canvas.height;
-        const r = Math.min(radius, w / 2, h / 2);
-
-        const out = document.createElement('canvas');
-        out.width = w;
-        out.height = h;
-        const ctx = out.getContext('2d');
-
-        ctx.beginPath();
-        ctx.moveTo(r, 0);
-        ctx.lineTo(w - r, 0);
-        ctx.quadraticCurveTo(w, 0, w, r);
-        ctx.lineTo(w, h - r);
-        ctx.quadraticCurveTo(w, h, w - r, h);
-        ctx.lineTo(r, h);
-        ctx.quadraticCurveTo(0, h, 0, h - r);
-        ctx.lineTo(0, r);
-        ctx.quadraticCurveTo(0, 0, r, 0);
-        ctx.closePath();
-        ctx.clip();
-        ctx.drawImage(canvas, 0, 0);
-
-        return out;
-      }
-
       function getDrawPoint(e) {
         const r = drawCanvas.getBoundingClientRect();
-        return { x: (e.clientX - r.left) * DPR, y: (e.clientY - r.top) * DPR };
+        return { x: e.clientX - r.left, y: e.clientY - r.top };
+      }
+
+      function finishText() {
+        if (!textInput) return;
+        const val = textInput.value.trim();
+        if (val) {
+          drawings.push({ tool: 'text', color: currentColor, width: brushSize, start: textInput._pt, text: val });
+          redrawDrawings();
+        }
+        textInput.remove();
+        textInput = null;
       }
 
       drawCanvas.addEventListener('mousedown', e => {
         if (resizing || dragging) return;
         e.stopPropagation();
         e.preventDefault();
+        if (currentTool === 'text') {
+          if (textInput) { finishText(); return; }
+          const pt = getDrawPoint(e);
+          textInput = document.createElement('textarea');
+          const cr = drawCanvas.getBoundingClientRect();
+          const sx = cr.left + pt.x / DPR;
+          const sy = cr.top  + pt.y / DPR;
+          textInput.style.cssText = `position:fixed;left:${sx}px;top:${sy}px;font-size:${brushSize * 3}px;color:${currentColor};background:transparent;border:1px dashed #2196f3;outline:none;padding:2px;min-width:80px;min-height:24px;resize:none;z-index:2147483647;font-family:sans-serif;`;
+          textInput.placeholder = 'Type...';
+          textInput._pt = pt;
+          document.documentElement.appendChild(textInput);
+          textInput.focus();
+          textInput.addEventListener('keydown', ev => {
+            if (ev.key === 'Enter' && !ev.shiftKey) { ev.preventDefault(); finishText(); }
+            if (ev.key === 'Escape') { textInput.remove(); textInput = null; }
+            ev.stopPropagation();
+          });
+          return;
+        }
+        if (textInput) finishText();
         const pt = getDrawPoint(e);
         isDrawing = true;
-        drawStart = pt;
-        currentDrawing = { tool: currentTool, color: currentColor, width: brushSize * DPR, points: [pt], start: pt, end: pt };
+        currentDrawing = { tool: currentTool, color: currentColor, width: brushSize, points: [pt], start: pt, end: pt };
       });
 
       drawCanvas.addEventListener('mousemove', e => {
@@ -404,8 +415,38 @@
 
       function redrawDrawings() {
         drawCtx.clearRect(0, 0, drawCanvas.width, drawCanvas.height);
-        drawings.forEach(d => drawOnCanvas(drawCtx, d, 1));
-        if (currentDrawing) drawOnCanvas(drawCtx, currentDrawing, 1);
+        drawings.forEach(d => drawOnCanvas(drawCtx, d, DPR));
+        if (currentDrawing) {
+          if (currentDrawing.tool === 'blur') drawBlurPreview(drawCtx, currentDrawing);
+          else drawOnCanvas(drawCtx, currentDrawing, DPR);
+        }
+      }
+
+      function pixelateRegion(ctx, x, y, w, h) {
+        if (w <= 0 || h <= 0) return;
+        const blockSize = 10;
+        const imgData = ctx.getImageData(x, y, w, h);
+        const d = imgData.data;
+        for (let by = 0; by < h; by += blockSize) {
+          for (let bx = 0; bx < w; bx += blockSize) {
+            let r = 0, g = 0, b = 0, a = 0, count = 0;
+            const bw = Math.min(blockSize, w - bx), bh = Math.min(blockSize, h - by);
+            for (let py = 0; py < bh; py++) {
+              for (let px = 0; px < bw; px++) {
+                const i = ((by + py) * w + (bx + px)) * 4;
+                r += d[i]; g += d[i+1]; b += d[i+2]; a += d[i+3]; count++;
+              }
+            }
+            r = r/count|0; g = g/count|0; b = b/count|0; a = a/count|0;
+            for (let py = 0; py < bh; py++) {
+              for (let px = 0; px < bw; px++) {
+                const i = ((by + py) * w + (bx + px)) * 4;
+                d[i] = r; d[i+1] = g; d[i+2] = b; d[i+3] = a;
+              }
+            }
+          }
+        }
+        ctx.putImageData(imgData, x, y);
       }
 
       function drawOnCanvas(ctx, d, scale) {
@@ -413,7 +454,14 @@
         ctx.lineJoin = 'round';
         const w = d.width * scale;
 
-        if (d.tool === 'pencil' || d.tool === 'marker') {
+        if (d.tool === 'blur') {
+          const rx = Math.round(Math.min(d.start.x, d.end.x) * scale);
+          const ry = Math.round(Math.min(d.start.y, d.end.y) * scale);
+          const rw = Math.round(Math.abs(d.end.x - d.start.x) * scale);
+          const rh = Math.round(Math.abs(d.end.y - d.start.y) * scale);
+          pixelateRegion(ctx, rx, ry, rw, rh);
+          return;
+        } else if (d.tool === 'pencil' || d.tool === 'marker') {
           ctx.strokeStyle = d.color;
           ctx.lineWidth = w;
           if (d.tool === 'marker') ctx.globalAlpha = 0.5;
@@ -467,7 +515,28 @@
           ctx.beginPath();
           ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2);
           ctx.stroke();
+        } else if (d.tool === 'text' && d.text) {
+          ctx.font = `${w * 3}px sans-serif`;
+          ctx.fillStyle = d.color;
+          ctx.textBaseline = 'top';
+          d.text.split('\n').forEach((line, i) => ctx.fillText(line, d.start.x, d.start.y + i * w * 3));
         }
+      }
+
+      // ── Blur preview on drawCanvas (shows frosted overlay while dragging) ───
+      // drawCanvas is transparent — we can't read actual page pixels here, so
+      // show a hatched semi-transparent rect to indicate the blur region.
+      function drawBlurPreview(ctx, d) {
+        const rx = Math.min(d.start.x, d.end.x) * DPR, ry = Math.min(d.start.y, d.end.y) * DPR;
+        const rw = Math.abs(d.end.x - d.start.x) * DPR, rh = Math.abs(d.end.y - d.start.y) * DPR;
+        ctx.save();
+        ctx.fillStyle = 'rgba(150,150,150,0.45)';
+        ctx.fillRect(rx, ry, rw, rh);
+        ctx.strokeStyle = '#2196f3';
+        ctx.lineWidth = 1.5 * DPR;
+        ctx.setLineDash([4 * DPR, 3 * DPR]);
+        ctx.strokeRect(rx, ry, rw, rh);
+        ctx.restore();
       }
 
       // ── Resize handles ─────────────────────────────────────────────────────
@@ -610,6 +679,7 @@
       document.addEventListener('keydown', onKey);
 
       function cleanup() {
+        if (textInput) { textInput.remove(); textInput = null; }
         overlay.remove();
         document.removeEventListener('keydown', onKey);
       }
@@ -620,6 +690,30 @@
     const d = document.createElement('div');
     d.style.cssText = 'position:fixed;background:rgba(0,0,0,0.5);pointer-events:none;';
     return d;
+  }
+
+  function roundCorners(canvas, radius) {
+    if (!radius || radius <= 0) return canvas;
+    const w = canvas.width, h = canvas.height;
+    const r = Math.min(radius, w / 2, h / 2);
+    const out = document.createElement('canvas');
+    out.width = w;
+    out.height = h;
+    const ctx = out.getContext('2d');
+    ctx.beginPath();
+    ctx.moveTo(r, 0);
+    ctx.lineTo(w - r, 0);
+    ctx.quadraticCurveTo(w, 0, w, r);
+    ctx.lineTo(w, h - r);
+    ctx.quadraticCurveTo(w, h, w - r, h);
+    ctx.lineTo(r, h);
+    ctx.quadraticCurveTo(0, h, 0, h - r);
+    ctx.lineTo(0, r);
+    ctx.quadraticCurveTo(0, 0, r, 0);
+    ctx.closePath();
+    ctx.clip();
+    ctx.drawImage(canvas, 0, 0);
+    return out;
   }
 
   // ── Full-page capture ───────────────────────────────────────────────────────
@@ -723,6 +817,7 @@
       { id: 'circle', icon: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#333" stroke-width="2"><circle cx="12" cy="12" r="9"/></svg>' },
       { id: 'marker', icon: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#333" stroke-width="2"><path d="m9 11-6 6v3h9l3-3"/><path d="m22 12-4.6 4.6a2 2 0 0 1-2.8 0l-5.2-5.2a2 2 0 0 1 0-2.8L14 4"/></svg>' },
       { id: 'text', icon: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#333" stroke-width="2"><polyline points="4 7 4 4 20 4 20 7"/><line x1="9" y1="20" x2="15" y2="20"/><line x1="12" y1="4" x2="12" y2="20"/></svg>' },
+      { id: 'blur', icon: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#333" stroke-width="2"><circle cx="12" cy="12" r="9"/><line x1="12" y1="3" x2="12" y2="21"/><line x1="3" y1="12" x2="21" y2="12"/><path d="M12 3a9 9 0 0 1 0 18" stroke-dasharray="3 2"/></svg>' },
     ];
 
     let editorTool = 'pencil';
@@ -894,7 +989,38 @@
       editorCtx.clearRect(0, 0, canvas.width, canvas.height);
       editorCtx.drawImage(img, 0, 0);
       editorDrawings.forEach(d => editorDrawObj(d));
-      if (editorCurrent) editorDrawObj(editorCurrent);
+      if (editorCurrent) {
+        if (editorCurrent.tool === 'blur') editorBlurPreview(editorCurrent);
+        else editorDrawObj(editorCurrent);
+      }
+    }
+
+    function editorPixelate(x, y, w, h) {
+      if (w <= 0 || h <= 0) return;
+      const blockSize = 12;
+      x = Math.round(x); y = Math.round(y); w = Math.round(w); h = Math.round(h);
+      const imgData = editorCtx.getImageData(x, y, w, h);
+      const d = imgData.data;
+      for (let by = 0; by < h; by += blockSize) {
+        for (let bx = 0; bx < w; bx += blockSize) {
+          let r = 0, g = 0, b = 0, a = 0, count = 0;
+          const bw = Math.min(blockSize, w - bx), bh = Math.min(blockSize, h - by);
+          for (let py = 0; py < bh; py++) {
+            for (let px = 0; px < bw; px++) {
+              const i = ((by + py) * w + (bx + px)) * 4;
+              r += d[i]; g += d[i+1]; b += d[i+2]; a += d[i+3]; count++;
+            }
+          }
+          r = r/count|0; g = g/count|0; b = b/count|0; a = a/count|0;
+          for (let py = 0; py < bh; py++) {
+            for (let px = 0; px < bw; px++) {
+              const i = ((by + py) * w + (bx + px)) * 4;
+              d[i] = r; d[i+1] = g; d[i+2] = b; d[i+3] = a;
+            }
+          }
+        }
+      }
+      editorCtx.putImageData(imgData, x, y);
     }
 
     function editorDrawObj(d) {
@@ -903,7 +1029,12 @@
       ctx.lineJoin = 'round';
       const w = d.width;
 
-      if (d.tool === 'pencil' || d.tool === 'marker') {
+      if (d.tool === 'blur') {
+        const rx = Math.min(d.start.x, d.end.x), ry = Math.min(d.start.y, d.end.y);
+        const rw = Math.abs(d.end.x - d.start.x), rh = Math.abs(d.end.y - d.start.y);
+        editorPixelate(rx, ry, rw, rh);
+        return;
+      } else if (d.tool === 'pencil' || d.tool === 'marker') {
         ctx.strokeStyle = d.color;
         ctx.lineWidth = w;
         if (d.tool === 'marker') ctx.globalAlpha = 0.5;
@@ -963,6 +1094,18 @@
       }
     }
 
+    // Blur preview in editor: show dashed rect while dragging
+    function editorBlurPreview(d) {
+      const rx = Math.min(d.start.x, d.end.x), ry = Math.min(d.start.y, d.end.y);
+      const rw = Math.abs(d.end.x - d.start.x), rh = Math.abs(d.end.y - d.start.y);
+      editorCtx.save();
+      editorCtx.strokeStyle = '#2196f3';
+      editorCtx.lineWidth = 2;
+      editorCtx.setLineDash([5, 4]);
+      editorCtx.strokeRect(rx, ry, rw, rh);
+      editorCtx.restore();
+    }
+
     function editorSave() {
       const fc = document.createElement('canvas');
       fc.width = imgW;
@@ -979,6 +1122,117 @@
       });
       overlay.remove();
     }
+  }
+
+  // ── Element capture ─────────────────────────────────────────────────────────
+
+  function captureElement(options) {
+    if (document.getElementById('__quickshot-elem-overlay')) return;
+
+    const highlight = document.createElement('div');
+    highlight.id = '__quickshot-elem-overlay';
+    highlight.style.cssText = 'position:fixed;pointer-events:none;z-index:2147483646;border:2px solid #2196f3;background:rgba(33,150,243,0.08);box-sizing:border-box;transition:none;';
+    document.documentElement.appendChild(highlight);
+
+    const label = document.createElement('div');
+    label.style.cssText = 'position:fixed;z-index:2147483647;background:#2196f3;color:#fff;font:11px/1 -apple-system,sans-serif;padding:3px 7px;border-radius:3px;pointer-events:none;white-space:nowrap;';
+    document.documentElement.appendChild(label);
+
+    const hint = document.createElement('div');
+    hint.style.cssText = 'position:fixed;bottom:12px;left:50%;transform:translateX(-50%);z-index:2147483647;background:rgba(0,0,0,0.75);color:#fff;font:12px/1.5 -apple-system,sans-serif;padding:6px 14px;border-radius:20px;pointer-events:none;';
+    hint.textContent = 'Click element to capture · Esc to cancel';
+    document.documentElement.appendChild(hint);
+
+    let hovered = null;
+
+    function onMove(e) {
+      // Walk up from the deepest target, skip our own injected elements
+      let el = document.elementFromPoint(e.clientX, e.clientY);
+      while (el && (el.id === '__quickshot-elem-overlay' || el === label || el === hint)) {
+        el = el.parentElement;
+      }
+      if (!el || el === document.documentElement || el === document.body) {
+        highlight.style.display = 'none';
+        label.style.display = 'none';
+        hovered = null;
+        return;
+      }
+      hovered = el;
+      const r = el.getBoundingClientRect();
+      highlight.style.display = 'block';
+      highlight.style.left   = r.left + 'px';
+      highlight.style.top    = r.top  + 'px';
+      highlight.style.width  = r.width  + 'px';
+      highlight.style.height = r.height + 'px';
+
+      const tag = el.tagName.toLowerCase();
+      const id  = el.id ? '#' + el.id : '';
+      const cls = el.className && typeof el.className === 'string'
+        ? '.' + el.className.trim().split(/\s+/).join('.')
+        : '';
+      label.textContent = tag + id + cls;
+      label.style.display = 'block';
+      // Position label above element, clamped to viewport
+      const lx = Math.min(r.left, window.innerWidth - label.offsetWidth - 4);
+      const ly = r.top > 20 ? r.top - 20 : r.bottom + 4;
+      label.style.left = Math.max(2, lx) + 'px';
+      label.style.top  = ly + 'px';
+    }
+
+    function cleanup() {
+      document.removeEventListener('mousemove', onMove, true);
+      document.removeEventListener('click', onClick, true);
+      document.removeEventListener('keydown', onKey, true);
+      highlight.remove();
+      label.remove();
+      hint.remove();
+    }
+
+    async function onClick(e) {
+      e.preventDefault();
+      e.stopPropagation();
+      if (!hovered) return;
+
+      const r = hovered.getBoundingClientRect();
+      const x = r.left, y = r.top, w = r.width, h = r.height;
+      cleanup();
+
+      // Hide overlay then capture
+      await new Promise(res => requestAnimationFrame(() => setTimeout(res, 50)));
+
+      const port = chrome.runtime.connect({ name: 'quickshot-area' });
+      port.postMessage({ type: 'AREA_CAPTURE_STRIP' });
+      port.onMessage.addListener(async msg => {
+        if (msg.type !== 'STRIP_RESULT') return;
+        port.disconnect();
+
+        const img = await loadImage(msg.dataUrl);
+        const dpr = window.devicePixelRatio || 1;
+        const canvas = document.createElement('canvas');
+        canvas.width  = Math.round(w * dpr);
+        canvas.height = Math.round(h * dpr);
+        const ctx = canvas.getContext('2d');
+        ctx.imageSmoothingEnabled = false;
+        ctx.drawImage(img, Math.round(x * dpr), Math.round(y * dpr), canvas.width, canvas.height, 0, 0, canvas.width, canvas.height);
+
+        const finalCanvas = roundCorners(canvas, (options.radius || 0) * dpr);
+        const dataUrl = finalCanvas.toDataURL('image/png');
+
+        if (options.download) chrome.runtime.sendMessage({ type: 'DOWNLOAD', dataUrl });
+        if (options.clipboard) {
+          const blob = await (await fetch(dataUrl)).blob();
+          navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
+        }
+      });
+    }
+
+    function onKey(e) {
+      if (e.key === 'Escape') cleanup();
+    }
+
+    document.addEventListener('mousemove', onMove, true);
+    document.addEventListener('click', onClick, true);
+    document.addEventListener('keydown', onKey, true);
   }
 
   // ── Helpers ─────────────────────────────────────────────────────────────────

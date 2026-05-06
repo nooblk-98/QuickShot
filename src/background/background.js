@@ -93,6 +93,13 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     });
     sendResponse({ ok: true });
   }
+  if (msg.type === 'CAPTURE_ELEMENT') {
+    ensureContentScript(msg.tabId).then(() => {
+      safeSendMessage(msg.tabId, { type: 'START_ELEMENT_CAPTURE', options: { download: msg.download, clipboard: msg.clipboard, radius: msg.radius || 0 } });
+    });
+    sendResponse({ ok: true });
+    return true;
+  }
 });
 
 async function captureVisible(tabId) {

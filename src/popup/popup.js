@@ -1,6 +1,7 @@
 const btnVisible   = document.getElementById('btn-visible');
 const btnFullpage  = document.getElementById('btn-fullpage');
 const btnArea      = document.getElementById('btn-area');
+const btnElement   = document.getElementById('btn-element');
 const statusEl     = document.getElementById('status');
 const radiusSlider = document.getElementById('corner-radius');
 const radiusValue  = document.getElementById('radius-value');
@@ -62,6 +63,7 @@ function setLoading(loading) {
   btnVisible.disabled  = loading;
   btnFullpage.disabled = loading;
   btnArea.disabled     = loading;
+  btnElement.disabled  = loading;
 }
 
 async function getCurrentTab() {
@@ -92,6 +94,13 @@ async function handleCapture(type) {
   if (type === 'CAPTURE_AREA') {
     const tabId = await getCurrentTabId();
     chrome.runtime.sendMessage({ type: 'CAPTURE_AREA', tabId, download: true, clipboard: false, radius, rememberLastArea: rememberArea.checked });
+    window.close();
+    return;
+  }
+
+  if (type === 'CAPTURE_ELEMENT') {
+    const tabId = await getCurrentTabId();
+    chrome.runtime.sendMessage({ type: 'CAPTURE_ELEMENT', tabId, download: true, clipboard: false, radius });
     window.close();
     return;
   }
@@ -127,3 +136,4 @@ async function handleCapture(type) {
 btnVisible.addEventListener('click',  () => handleCapture('CAPTURE_VISIBLE'));
 btnFullpage.addEventListener('click', () => handleCapture('CAPTURE_FULL_PAGE'));
 btnArea.addEventListener('click',     () => handleCapture('CAPTURE_AREA'));
+btnElement.addEventListener('click',  () => handleCapture('CAPTURE_ELEMENT'));
