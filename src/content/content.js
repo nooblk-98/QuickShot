@@ -707,9 +707,9 @@
     overlay.appendChild(canvasArea);
     document.body.appendChild(overlay);
 
-    // Right-side toolbar (floating)
+    // Right-side toolbar (inside overlay, absolute position)
     const vBar = document.createElement('div');
-    vBar.style.cssText = 'position:fixed;display:flex;flex-direction:column;gap:2px;padding:4px;background:linear-gradient(to right,#fafbfb,#cbcec0);border-radius:4px;box-shadow:0 2px 8px rgba(0,0,0,0.3);z-index:10;';
+    vBar.style.cssText = 'position:absolute;right:20px;top:20px;display:flex;flex-direction:column;gap:2px;padding:4px;background:linear-gradient(to right,#fafbfb,#cbcec0);border-radius:4px;box-shadow:0 2px 8px rgba(0,0,0,0.3);z-index:10;';
 
     const eTools = [
       { id: 'pencil', icon: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#333" stroke-width="2"><path d="M17 3a2.85 2.85 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>' },
@@ -731,10 +731,6 @@
     let dispScale = 1;
     let eDrawing = false;
     let eTextInput = null;
-
-    // Position toolbar
-    vBar.style.right = '20px';
-    vBar.style.top = '80px';
 
     eTools.forEach(t => {
       const btn = document.createElement('button');
@@ -788,7 +784,7 @@
     undoBtn.addEventListener('click', () => { editorDrawings.pop(); editorRedraw(); });
     vBar.appendChild(undoBtn);
 
-    document.body.appendChild(vBar);
+    overlay.appendChild(vBar);
 
     // Load image
     const img = new Image();
@@ -868,7 +864,7 @@
         return;
       }
       if (e.ctrlKey && e.key === 'z') { e.preventDefault(); editorDrawings.pop(); editorRedraw(); }
-      if (e.key === 'Escape') { overlay.remove(); vBar.remove(); }
+      if (e.key === 'Escape') { overlay.remove(); document.removeEventListener('keydown', editorKey); }
     });
 
     function finishEditorText() {
@@ -968,7 +964,6 @@
       fctx.drawImage(canvas, 0, 0);
       chrome.runtime.sendMessage({ type: 'DOWNLOAD', dataUrl: fc.toDataURL('image/png') });
       overlay.remove();
-      vBar.remove();
     }
 
     function editorCopy() {
@@ -976,7 +971,6 @@
         navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
       });
       overlay.remove();
-      vBar.remove();
     }
   }
 
