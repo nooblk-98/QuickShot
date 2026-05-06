@@ -4,6 +4,7 @@ const btnArea      = document.getElementById('btn-area');
 const statusEl     = document.getElementById('status');
 const radiusSlider = document.getElementById('corner-radius');
 const radiusValue  = document.getElementById('radius-value');
+const enableAnnotate = document.getElementById('enable-annotate');
 const rememberArea = document.getElementById('remember-area');
 
 function syncSlider() {
@@ -11,14 +12,18 @@ function syncSlider() {
   radiusSlider.style.setProperty('--pct', pct + '%');
   radiusValue.textContent = radiusSlider.value;
 }
-chrome.storage.sync.get({ radius: 0, rememberLastArea: false }, s => {
+chrome.storage.sync.get({ radius: 0, enableAnnotate: false, rememberLastArea: false }, s => {
   radiusSlider.value = s.radius;
+  enableAnnotate.checked = s.enableAnnotate;
   rememberArea.checked = s.rememberLastArea;
   syncSlider();
 });
 radiusSlider.addEventListener('input', () => {
   syncSlider();
   chrome.storage.sync.set({ radius: parseInt(radiusSlider.value, 10) });
+});
+enableAnnotate.addEventListener('change', () => {
+  chrome.storage.sync.set({ enableAnnotate: enableAnnotate.checked });
 });
 rememberArea.addEventListener('change', () => {
   chrome.storage.sync.set({ rememberLastArea: rememberArea.checked });
@@ -82,6 +87,7 @@ async function handleCapture(type) {
   }
 
   const radius = parseInt(radiusSlider.value, 10);
+  const annotate = enableAnnotate.checked;
 
   if (type === 'CAPTURE_AREA') {
     const tabId = await getCurrentTabId();
@@ -100,12 +106,17 @@ async function handleCapture(type) {
     if (!result) throw new Error('No response from background. Try reloading the page.');
     if (result?.error) throw new Error(result.error);
 
-    const dataUrl = radius > 0 ? await applyRoundedCorners(result.dataUrl, radius) : result.dataUrl;
-    await chrome.runtime.sendMessage({ type: 'DOWNLOAD', dataUrl });
-    const blob = await (await fetch(dataUrl)).blob();
-    await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
+    let dataUrl = radius > 0 ? await applyRoundedCorners(result.dataUrl, radius) : result.dataUrl;
 
-    setStatus('Downloaded · Copied to clipboard', 'success');
+    if (annotate) {
+      await chrome.runtime.sendMessage({ type: 'OPEN_ANNOTATION', dataUrl, tabId });
+      setStatus('Annotation editor opened', 'success');
+    } else {
+      await chrome.runtime.sendMessage({ type: 'DOWNLOAD', dataUrl });
+      const blob = await (await fetch(dataUrl)).blob();
+      await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
+      setStatus('Downloaded · Copied to clipboard', 'success');
+    }
   } catch (err) {
     setStatus('Error: ' + err.message, 'error');
   } finally {

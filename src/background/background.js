@@ -87,6 +87,12 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     });
     sendResponse({ ok: true });
   }
+  if (msg.type === 'OPEN_ANNOTATION') {
+    ensureContentScript(msg.tabId).then(() => {
+      safeSendMessage(msg.tabId, { type: 'OPEN_ANNOTATION', dataUrl: msg.dataUrl });
+    });
+    sendResponse({ ok: true });
+  }
 });
 
 async function captureVisible(tabId) {
