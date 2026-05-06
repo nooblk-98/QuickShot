@@ -33,7 +33,7 @@ chrome.runtime.onConnect.addListener(port => {
     port.onMessage.addListener(async msg => {
       if (msg.type === 'AREA_CAPTURE_STRIP') {
         try {
-          const dataUrl = await chrome.tabs.captureVisibleTab(null, { format: 'png' });
+          const dataUrl = await chrome.tabs.captureVisibleTab({ format: 'png' });
           port.postMessage({ type: 'STRIP_RESULT', dataUrl });
         } catch (e) {
           port.postMessage({ type: 'STRIP_ERROR', error: e.message });
@@ -74,7 +74,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   }
   if (msg.type === 'CAPTURE_AREA') {
     ensureContentScript(msg.tabId).then(() => {
-      safeSendMessage(msg.tabId, { type: 'START_AREA_CAPTURE', options: { download: msg.download, clipboard: msg.clipboard, radius: msg.radius || 0 } });
+      safeSendMessage(msg.tabId, { type: 'START_AREA_CAPTURE', options: { download: msg.download, clipboard: msg.clipboard, radius: msg.radius || 0, rememberLastArea: msg.rememberLastArea || false } });
     });
     sendResponse({ ok: true });
     return true;
@@ -130,8 +130,10 @@ async function ensureContentScript(tabId) {
       target: { tabId },
       files: ['src/content/content.js']
     });
-  } catch (_) {
-    // Already injected or page doesn't allow scripts — ignore
+  } catch (e) {
+    if (!e.message?.includes('already been injected')) {
+      console.warn('QuickShot: content script injection failed:', e.message);
+    }
   }
 }
 
@@ -211,6 +213,7 @@ async function handleCapture(tabId, type, options) {
       const { dataUrl } = await captureFullPage(tabId);
       handleOutput(dataUrl, options, tabId);
     } else if (type === 'CAPTURE_AREA') {
+      await ensureContentScript(tabId);
       safeSendMessage(tabId, { type: 'START_AREA_CAPTURE', options });
     } else {
       const { dataUrl } = await captureVisible(tabId);

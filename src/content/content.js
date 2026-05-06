@@ -84,6 +84,7 @@
       drawCanvas.id = '__quickshot-draw';
       drawCanvas.style.cssText = 'position:absolute;top:0;left:0;';
       sel.appendChild(drawCanvas);
+      const drawCtx = drawCanvas.getContext('2d');
 
       // Vertical toolbar (right side)
       const vToolbar = document.createElement('div');
@@ -112,7 +113,6 @@
       let drawings = [];
       let currentDrawing = null;
       let isDrawing = false;
-      let drawStart = { x: 0, y: 0 };
 
       function getHandlePos(dir) {
         const pos = {
@@ -173,28 +173,33 @@
         buildHToolbar();
       }
 
-      function buildVToolbar() {
-        vToolbar.innerHTML = '';
-        const tools = [
-          { id: 'pencil', icon: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#333" stroke-width="2"><path d="M17 3a2.85 2.85 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>' },
-          { id: 'line', icon: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#333" stroke-width="2"><line x1="5" y1="19" x2="19" y2="5"/></svg>' },
-          { id: 'arrow', icon: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#333" stroke-width="2"><line x1="5" y1="19" x2="19" y2="5"/><polyline points="10 5 19 5 19 14"/></svg>' },
-          { id: 'rect', icon: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#333" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>' },
-          { id: 'circle', icon: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#333" stroke-width="2"><circle cx="12" cy="12" r="9"/></svg>' },
-          { id: 'marker', icon: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#333" stroke-width="2"><path d="m9 11-6 6v3h9l3-3"/><path d="m22 12-4.6 4.6a2 2 0 0 1-2.8 0l-5.2-5.2a2 2 0 0 1 0-2.8L14 4"/></svg>' },
-          { id: 'text', icon: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#333" stroke-width="2"><polyline points="4 7 4 4 20 4 20 7"/><line x1="9" y1="20" x2="15" y2="20"/><line x1="12" y1="4" x2="12" y2="20"/></svg>' },
-        ];
+      const vToolbarTools = [
+        { id: 'pencil', icon: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#333" stroke-width="2"><path d="M17 3a2.85 2.85 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>' },
+        { id: 'line', icon: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#333" stroke-width="2"><line x1="5" y1="19" x2="19" y2="5"/></svg>' },
+        { id: 'arrow', icon: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#333" stroke-width="2"><line x1="5" y1="19" x2="19" y2="5"/><polyline points="10 5 19 5 19 14"/></svg>' },
+        { id: 'rect', icon: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#333" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>' },
+        { id: 'circle', icon: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#333" stroke-width="2"><circle cx="12" cy="12" r="9"/></svg>' },
+        { id: 'marker', icon: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#333" stroke-width="2"><path d="m9 11-6 6v3h9l3-3"/><path d="m22 12-4.6 4.6a2 2 0 0 1-2.8 0l-5.2-5.2a2 2 0 0 1 0-2.8L14 4"/></svg>' },
+        { id: 'text', icon: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#333" stroke-width="2"><polyline points="4 7 4 4 20 4 20 7"/><line x1="9" y1="20" x2="15" y2="20"/><line x1="12" y1="4" x2="12" y2="20"/></svg>' },
+      ];
+      // Map tool id → button element for O(1) active-state updates
+      const vToolbarBtns = {};
 
-        tools.forEach(t => {
+      function buildVToolbar() {
+        vToolbarTools.forEach(t => {
           const btn = document.createElement('button');
-          btn.style.cssText = `width:26px;height:26px;display:flex;align-items:center;justify-content:center;background:transparent;border:1px solid ${t.id === currentTool ? '#2196f3' : 'transparent'};border-radius:3px;cursor:pointer;`;
+          btn.style.cssText = 'width:26px;height:26px;display:flex;align-items:center;justify-content:center;background:transparent;border:1px solid transparent;border-radius:3px;cursor:pointer;';
           btn.innerHTML = t.icon;
           btn.addEventListener('click', () => {
+            const prev = currentTool;
             currentTool = currentTool === t.id ? 'pencil' : t.id;
-            buildVToolbar();
+            vToolbarBtns[prev].style.borderColor = 'transparent';
+            vToolbarBtns[currentTool].style.borderColor = '#2196f3';
           });
+          vToolbarBtns[t.id] = btn;
           vToolbar.appendChild(btn);
         });
+        vToolbarBtns[currentTool].style.borderColor = '#2196f3';
 
         const sep = document.createElement('div');
         sep.style.cssText = 'height:0;width:20px;border-bottom:1px solid #666;margin:2px 0;';
@@ -237,7 +242,7 @@
         });
       }
 
-      function showColorPicker(anchor) {
+      function showColorPicker(colorBtn) {
         const existing = document.getElementById('__qs-color-popup');
         if (existing) { existing.remove(); return; }
 
@@ -250,8 +255,8 @@
           swatch.style.cssText = `width:20px;height:20px;border-radius:2px;cursor:pointer;border:2px solid ${color === currentColor ? '#fff' : 'transparent'};background:${color};`;
           swatch.addEventListener('click', () => {
             currentColor = color;
+            colorBtn.style.background = color;
             popup.remove();
-            buildVToolbar();
           });
           popup.appendChild(swatch);
         });
@@ -300,16 +305,13 @@
         drawings.forEach(d => drawOnCanvas(ctx, d, DPR));
 
         // Apply rounded corners if configured
-        roundCorners(canvas, (options.radius || 0) * DPR);
+        const finalCanvas = roundCorners(canvas, (options.radius || 0) * DPR);
 
-        const dataUrl = canvas.toDataURL('image/png');
+        const dataUrl = finalCanvas.toDataURL('image/png');
 
-        // Save to storage (only if rememberLastArea is enabled)
-        chrome.storage.sync.get({ rememberLastArea: false }, ({ rememberLastArea }) => {
-          if (rememberLastArea) {
-            chrome.storage.local.set({ lastAreaSelection: { x, y, w, h } });
-          }
-        });
+        if (options.rememberLastArea) {
+          chrome.storage.local.set({ lastAreaSelection: { x, y, w, h } });
+        }
 
         if (action === 'save') {
           chrome.runtime.sendMessage({ type: 'DOWNLOAD', dataUrl });
@@ -328,15 +330,11 @@
         if (!radius || radius <= 0) return canvas;
         const w = canvas.width, h = canvas.height;
         const r = Math.min(radius, w / 2, h / 2);
-        const ctx = canvas.getContext('2d');
 
-        const tempCanvas = document.createElement('canvas');
-        tempCanvas.width = w;
-        tempCanvas.height = h;
-        const tempCtx = tempCanvas.getContext('2d');
-        tempCtx.drawImage(canvas, 0, 0);
-
-        ctx.clearRect(0, 0, w, h);
+        const out = document.createElement('canvas');
+        out.width = w;
+        out.height = h;
+        const ctx = out.getContext('2d');
 
         ctx.beginPath();
         ctx.moveTo(r, 0);
@@ -349,15 +347,10 @@
         ctx.lineTo(0, r);
         ctx.quadraticCurveTo(0, 0, r, 0);
         ctx.closePath();
+        ctx.clip();
+        ctx.drawImage(canvas, 0, 0);
 
-        ctx.imageSmoothingEnabled = true;
-        ctx.fillStyle = '#fff';
-        ctx.fill();
-        ctx.globalCompositeOperation = 'source-in';
-        ctx.drawImage(tempCanvas, 0, 0);
-        ctx.globalCompositeOperation = 'source-over';
-
-        return canvas;
+        return out;
       }
 
       function getDrawPoint(e) {
@@ -389,7 +382,7 @@
 
       drawCanvas.addEventListener('mouseup', e => {
         if (isDrawing && currentDrawing) {
-          if (currentDrawing.points.length > 1 || currentDrawing.start.x !== currentDrawing.end.x) {
+          if (currentDrawing.points.length > 1 || currentDrawing.start.x !== currentDrawing.end.x || currentDrawing.start.y !== currentDrawing.end.y) {
             drawings.push(currentDrawing);
           }
           currentDrawing = null;
@@ -400,7 +393,7 @@
 
       drawCanvas.addEventListener('mouseleave', () => {
         if (isDrawing && currentDrawing) {
-          if (currentDrawing.points.length > 1 || currentDrawing.start.x !== currentDrawing.end.x) {
+          if (currentDrawing.points.length > 1 || currentDrawing.start.x !== currentDrawing.end.x || currentDrawing.start.y !== currentDrawing.end.y) {
             drawings.push(currentDrawing);
           }
           currentDrawing = null;
@@ -410,10 +403,9 @@
       });
 
       function redrawDrawings() {
-        const ctx = drawCanvas.getContext('2d');
-        ctx.clearRect(0, 0, drawCanvas.width, drawCanvas.height);
-        drawings.forEach(d => drawOnCanvas(ctx, d, 1));
-        if (currentDrawing) drawOnCanvas(ctx, currentDrawing, 1);
+        drawCtx.clearRect(0, 0, drawCanvas.width, drawCanvas.height);
+        drawings.forEach(d => drawOnCanvas(drawCtx, d, 1));
+        if (currentDrawing) drawOnCanvas(drawCtx, currentDrawing, 1);
       }
 
       function drawOnCanvas(ctx, d, scale) {
@@ -558,7 +550,6 @@
         };
         if (rect.w > 5 && rect.h > 5) {
           updateSelection();
-          showToolbars();
         }
       });
 
@@ -577,6 +568,7 @@
         if (rect.w > 5 && rect.h > 5) {
           selectionComplete = true;
           moveHandle.style.display = 'block';
+          showToolbars();
         } else {
           rect = { x: 0, y: 0, w: 0, h: 0 };
           sel.style.display = 'none';
@@ -644,7 +636,7 @@
     window.scrollTo(0, 0);
 
     while (capturedHeight < totalHeight) {
-      await settle(250);
+      await settle(100);
       const result = await new Promise((resolve, reject) => {
         chrome.runtime.sendMessage({ type: 'CAPTURE_STRIP' }, res => {
           if (chrome.runtime.lastError) return reject(new Error(chrome.runtime.lastError.message));
@@ -666,13 +658,17 @@
     canvas.height = totalHeight * dpr;
     const ctx = canvas.getContext('2d');
 
-    for (const strip of strips) {
+    for (let i = 0; i < strips.length; i++) {
+      const strip = strips[i];
       const img = await loadImage(strip.dataUrl);
-      const srcY = strips.indexOf(strip) === 0 ? 0 : (img.height - strip.height * dpr);
+      const srcY = i === 0 ? 0 : (img.height - strip.height * dpr);
       ctx.drawImage(img, 0, srcY, img.width, strip.height * dpr, 0, strip.y * dpr, canvas.width, strip.height * dpr);
     }
 
-    return canvas.toDataURL('image/png');
+    const dataUrl = canvas.toDataURL('image/png');
+    canvas.width = 0;
+    canvas.height = 0;
+    return dataUrl;
   }
 
   // ── Annotation editor for visible/full page captures ──────────────────────
@@ -763,7 +759,7 @@
     colorBtn.addEventListener('click', e => {
       e.stopPropagation();
       const popup = document.createElement('div');
-      popup.style.cssText = 'position:fixed;background:rgba(0,0,0,0.9);border-radius:4px;padding:4px;display:flex;gap:3px;z-index:100;';
+      popup.style.cssText = 'position:fixed;background:rgba(0,0,0,0.9);border-radius:4px;padding:4px;display:flex;gap:3px;z-index:2147483647;';
       const rect = colorBtn.getBoundingClientRect();
       popup.style.left = (rect.left - 130) + 'px';
       popup.style.top = rect.top + 'px';

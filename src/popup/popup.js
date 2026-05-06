@@ -91,7 +91,7 @@ async function handleCapture(type) {
 
   if (type === 'CAPTURE_AREA') {
     const tabId = await getCurrentTabId();
-    chrome.runtime.sendMessage({ type: 'CAPTURE_AREA', tabId, download: true, clipboard: false, radius });
+    chrome.runtime.sendMessage({ type: 'CAPTURE_AREA', tabId, download: true, clipboard: false, radius, rememberLastArea: rememberArea.checked });
     window.close();
     return;
   }
