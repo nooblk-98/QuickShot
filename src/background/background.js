@@ -40,28 +40,29 @@ chrome.runtime.onConnect.addListener(port => {
         }
       }
       if (msg.type === 'AREA_RESULT') {
-        handleOutput(msg.dataUrl, { download: msg.download, clipboard: msg.clipboard, radius: msg.radius || 0 }, port.sender.tab.id);
+        handleOutput(msg.dataUrl, { download: msg.download, clipboard: msg.clipboard }, port.sender.tab.id);
       }
     });
   }
 });
 
-// Send to content script, silently ignoring connection errors
 function safeSendMessage(tabId, msg) {
-  chrome.tabs.get(tabId, tab => {
-    if (chrome.runtime.lastError) return;
-    const url = tab.url || '';
-    if (url.startsWith('chrome://') || url.startsWith('chrome-extension://') || url.startsWith('edge://') || url.startsWith('about:')) {
-      console.warn('QuickShot: cannot run on', url);
-      return;
-    }
-    chrome.tabs.sendMessage(tabId, msg, () => { chrome.runtime.lastError; /* suppress */ });
-  });
+  chrome.tabs.sendMessage(tabId, msg, () => { chrome.runtime.lastError; /* suppress */ });
+}
+
+function sendCaptureResult(tabId, dataUrl, msg) {
+  if (msg.annotate) {
+    safeSendMessage(tabId, { type: 'OPEN_ANNOTATION', dataUrl });
+  } else {
+    safeSendMessage(tabId, { type: 'PROCESS_CAPTURE', dataUrl, download: msg.download, clipboard: msg.clipboard });
+  }
 }
 
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   if (msg.type === 'CAPTURE_VISIBLE') {
-    captureVisible(msg.tabId).then(sendResponse).catch(err => sendResponse({ error: err.message }));
+    captureVisible(msg.tabId)
+      .then(({ dataUrl }) => ensureContentScript(msg.tabId).then(() => sendCaptureResult(msg.tabId, dataUrl, msg)))
+      .catch(err => console.error('QuickShot visible capture error:', err));
     return true;
   }
   if (msg.type === 'CAPTURE_STRIP') {
@@ -69,12 +70,14 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     return true;
   }
   if (msg.type === 'CAPTURE_FULL_PAGE') {
-    captureFullPage(msg.tabId).then(sendResponse).catch(err => sendResponse({ error: err.message }));
+    captureFullPage(msg.tabId)
+      .then(({ dataUrl }) => sendCaptureResult(msg.tabId, dataUrl, msg))
+      .catch(err => console.error('QuickShot full page capture error:', err));
     return true;
   }
   if (msg.type === 'CAPTURE_AREA') {
     ensureContentScript(msg.tabId).then(() => {
-      safeSendMessage(msg.tabId, { type: 'START_AREA_CAPTURE', options: { download: msg.download, clipboard: msg.clipboard, radius: msg.radius || 0, rememberLastArea: msg.rememberLastArea || false } });
+      safeSendMessage(msg.tabId, { type: 'START_AREA_CAPTURE', options: { download: msg.download, clipboard: msg.clipboard, rememberLastArea: msg.rememberLastArea || false } });
     });
     sendResponse({ ok: true });
     return true;
@@ -95,7 +98,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   }
   if (msg.type === 'CAPTURE_ELEMENT') {
     ensureContentScript(msg.tabId).then(() => {
-      safeSendMessage(msg.tabId, { type: 'START_ELEMENT_CAPTURE', options: { download: msg.download, clipboard: msg.clipboard, radius: msg.radius || 0 } });
+      safeSendMessage(msg.tabId, { type: 'START_ELEMENT_CAPTURE', options: { download: msg.download, clipboard: msg.clipboard } });
     });
     sendResponse({ ok: true });
     return true;
@@ -106,29 +109,59 @@ async function captureVisible(tabId) {
   const dataUrl = await chrome.tabs.captureVisibleTab(null, { format: 'png' });
   if (!tabId) return { dataUrl };
 
-  // Crop out the scrollbar by using clientWidth/clientHeight (excludes scrollbars)
-  const cropped = await chrome.scripting.executeScript({
+  // Get client dimensions (lightweight, no image data transferred)
+  const dims = await chrome.scripting.executeScript({
     target: { tabId },
-    func: (dataUrl) => new Promise(resolve => {
-      const img = new Image();
-      img.onload = () => {
-        const dpr = window.devicePixelRatio || 1;
-        const w = Math.round(document.documentElement.clientWidth * dpr);
-        const h = Math.round(document.documentElement.clientHeight * dpr);
-        if (w >= img.width && h >= img.height) { resolve(dataUrl); return; }
-        const canvas = document.createElement('canvas');
-        canvas.width = w; canvas.height = h;
-        const ctx = canvas.getContext('2d');
-        ctx.imageSmoothingEnabled = false;
-        ctx.drawImage(img, 0, 0, w, h, 0, 0, w, h);
-        resolve(canvas.toDataURL('image/png'));
-      };
-      img.src = dataUrl;
-    }),
-    args: [dataUrl]
-  }).then(r => r[0].result).catch(() => dataUrl);
+    func: () => {
+      const dpr = window.devicePixelRatio || 1;
+      return { w: Math.round(document.documentElement.clientWidth * dpr), h: Math.round(document.documentElement.clientHeight * dpr) };
+    }
+  }).then(r => r[0].result).catch(() => null);
 
-  return { dataUrl: cropped };
+  if (!dims) return { dataUrl };
+
+  // Get captured image dimensions to decide if cropping is needed
+  const imgInfo = await getImageInfo(dataUrl);
+  if (!imgInfo || (dims.w >= imgInfo.w && dims.h >= imgInfo.h)) return { dataUrl };
+
+  // Crop scrollbar using OffscreenCanvas
+  const cropped = await cropImage(dataUrl, dims.w, dims.h);
+  return { dataUrl: cropped || dataUrl };
+}
+
+async function getImageInfo(dataUrl) {
+  try {
+    const res = await fetch(dataUrl);
+    const blob = await res.blob();
+    const bitmap = await createImageBitmap(blob);
+    const info = { w: bitmap.width, h: bitmap.height };
+    bitmap.close();
+    return info;
+  } catch {
+    return null;
+  }
+}
+
+async function cropImage(dataUrl, w, h) {
+  try {
+    const res = await fetch(dataUrl);
+    const blob = await res.blob();
+    const bitmap = await createImageBitmap(blob);
+    const canvas = new OffscreenCanvas(w, h);
+    const ctx = canvas.getContext('2d');
+    ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(bitmap, 0, 0, w, h, 0, 0, w, h);
+    bitmap.close();
+    const outBlob = await canvas.convertToBlob();
+    return await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result);
+      reader.onerror = reject;
+      reader.readAsDataURL(outBlob);
+    });
+  } catch {
+    return null;
+  }
 }
 
 async function ensureContentScript(tabId) {
@@ -155,45 +188,7 @@ async function captureFullPage(tabId) {
   });
 }
 
-function applyRoundedCornersInTab(tabId, dataUrl, radius) {
-  return chrome.scripting.executeScript({
-    target: { tabId },
-    func: (dataUrl, radius) => {
-      return new Promise(resolve => {
-        const img = new Image();
-        img.onload = () => {
-          const canvas = document.createElement('canvas');
-          canvas.width  = img.width;
-          canvas.height = img.height;
-          const ctx = canvas.getContext('2d');
-          const r = Math.min(radius, img.width / 2, img.height / 2);
-          ctx.beginPath();
-          ctx.moveTo(r, 0);
-          ctx.lineTo(img.width - r, 0);
-          ctx.quadraticCurveTo(img.width, 0, img.width, r);
-          ctx.lineTo(img.width, img.height - r);
-          ctx.quadraticCurveTo(img.width, img.height, img.width - r, img.height);
-          ctx.lineTo(r, img.height);
-          ctx.quadraticCurveTo(0, img.height, 0, img.height - r);
-          ctx.lineTo(0, r);
-          ctx.quadraticCurveTo(0, 0, r, 0);
-          ctx.closePath();
-          ctx.clip();
-          ctx.drawImage(img, 0, 0);
-          resolve(canvas.toDataURL('image/png'));
-        };
-        img.src = dataUrl;
-      });
-    },
-    args: [dataUrl, radius]
-  }).then(results => results[0].result);
-}
-
 async function handleOutput(dataUrl, options, tabId) {
-  const radius = options.radius || 0;
-  if (radius > 0) {
-    try { dataUrl = await applyRoundedCornersInTab(tabId, dataUrl, radius); } catch (_) {}
-  }
   if (options.download) {
     chrome.downloads.download({
       url: dataUrl,

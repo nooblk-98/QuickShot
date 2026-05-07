@@ -22,6 +22,11 @@
       sendResponse({ ok: true });
       return true;
     }
+    if (msg.type === 'PROCESS_CAPTURE') {
+      processCapturedImage(msg.dataUrl, msg.download, msg.clipboard);
+      sendResponse({ ok: true });
+      return true;
+    }
     if (msg.type === 'START_AREA_CAPTURE') {
       const port = chrome.runtime.connect({ name: 'quickshot-area' });
       captureArea(port, msg.options)
@@ -81,7 +86,7 @@
       const moveHandle = document.createElement('div');
       moveHandle.id = '__quickshot-move';
       moveHandle.style.cssText = 'position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:28px;height:28px;display:none;cursor:grab;opacity:0.7;z-index:5;';
-      moveHandle.innerHTML = '<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><circle cx="9" cy="6" r="1.5" fill="#fff"/><circle cx="15" cy="6" r="1.5" fill="#fff"/><circle cx="9" cy="12" r="1.5" fill="#fff"/><circle cx="15" cy="12" r="1.5" fill="#fff"/><circle cx="9" cy="18" r="1.5" fill="#fff"/><circle cx="15" cy="18" r="1.5" fill="#fff"/></svg>';
+      moveHandle.innerHTML = '<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" filter="drop-shadow(0 0 2px #000)"><circle cx="9" cy="6" r="1.5" fill="#fff"/><circle cx="15" cy="6" r="1.5" fill="#fff"/><circle cx="9" cy="12" r="1.5" fill="#fff"/><circle cx="15" cy="12" r="1.5" fill="#fff"/><circle cx="9" cy="18" r="1.5" fill="#fff"/><circle cx="15" cy="18" r="1.5" fill="#fff"/></svg>';
       sel.appendChild(moveHandle);
 
       // Drawing canvas (inside selection)
@@ -102,6 +107,13 @@
       hToolbar.id = '__quickshot-htoolbar';
       hToolbar.style.cssText = 'position:absolute;bottom:-36px;left:0;display:none;flex-direction:row;gap:1px;padding:3px;background:linear-gradient(to bottom,#fafbfb,#cbcec0);border-radius:4px;box-shadow:0 2px 6px rgba(0,0,0,0.3);white-space:nowrap;';
       sel.appendChild(hToolbar);
+
+      // Show full-page mask immediately (before any selection)
+      const vwi = window.innerWidth, vhi = window.innerHeight;
+      setMask(maskTop, 0, 0, vwi, vhi);
+      setMask(maskLeft, 0, 0, 0, 0);
+      setMask(maskRight, 0, 0, 0, 0);
+      setMask(maskBottom, 0, 0, 0, 0);
 
       document.documentElement.appendChild(overlay);
 
@@ -312,10 +324,7 @@
         // Draw annotations
         drawings.forEach(d => drawOnCanvas(ctx, d, DPR));
 
-        // Apply rounded corners if configured
-        const finalCanvas = roundCorners(canvas, (options.radius || 0) * DPR);
-
-        const dataUrl = finalCanvas.toDataURL('image/png');
+        const dataUrl = canvas.toDataURL('image/png');
 
         if (options.rememberLastArea) {
           chrome.storage.local.set({ lastAreaSelection: { x, y, w, h } });
@@ -692,28 +701,14 @@
     return d;
   }
 
-  function roundCorners(canvas, radius) {
-    if (!radius || radius <= 0) return canvas;
-    const w = canvas.width, h = canvas.height;
-    const r = Math.min(radius, w / 2, h / 2);
-    const out = document.createElement('canvas');
-    out.width = w;
-    out.height = h;
-    const ctx = out.getContext('2d');
-    ctx.beginPath();
-    ctx.moveTo(r, 0);
-    ctx.lineTo(w - r, 0);
-    ctx.quadraticCurveTo(w, 0, w, r);
-    ctx.lineTo(w, h - r);
-    ctx.quadraticCurveTo(w, h, w - r, h);
-    ctx.lineTo(r, h);
-    ctx.quadraticCurveTo(0, h, 0, h - r);
-    ctx.lineTo(0, r);
-    ctx.quadraticCurveTo(0, 0, r, 0);
-    ctx.closePath();
-    ctx.clip();
-    ctx.drawImage(canvas, 0, 0);
-    return out;
+  async function processCapturedImage(dataUrl, download, clipboard) {
+    if (download) {
+      chrome.runtime.sendMessage({ type: 'DOWNLOAD', dataUrl });
+    }
+    if (clipboard) {
+      const blob = await (await fetch(dataUrl)).blob();
+      navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
+    }
   }
 
   // ── Full-page capture ───────────────────────────────────────────────────────
@@ -1215,8 +1210,7 @@
         ctx.imageSmoothingEnabled = false;
         ctx.drawImage(img, Math.round(x * dpr), Math.round(y * dpr), canvas.width, canvas.height, 0, 0, canvas.width, canvas.height);
 
-        const finalCanvas = roundCorners(canvas, (options.radius || 0) * dpr);
-        const dataUrl = finalCanvas.toDataURL('image/png');
+        const dataUrl = canvas.toDataURL('image/png');
 
         if (options.download) chrome.runtime.sendMessage({ type: 'DOWNLOAD', dataUrl });
         if (options.clipboard) {

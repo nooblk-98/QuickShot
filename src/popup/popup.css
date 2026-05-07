@@ -50,55 +50,6 @@ body {
   opacity: 0.9;
 }
 
-/* ── Radius ──────────────────────────────────────────────── */
-.radius-section {
-  padding: 6px 8px 8px;
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-}
-
-.radius-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.radius-label {
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.6px;
-  color: rgba(255,255,255,0.4);
-  text-transform: uppercase;
-}
-
-.radius-value-wrap {
-  font-size: 11px;
-  font-weight: 600;
-  color: #42a5f5;
-}
-
-.radius-slider {
-  width: 100%;
-  -webkit-appearance: none;
-  appearance: none;
-  height: 4px;
-  border-radius: 2px;
-  background: linear-gradient(to right, #2196f3 0%, #2196f3 var(--pct, 0%), #2a2a45 var(--pct, 0%), #2a2a45 100%);
-  outline: none;
-  cursor: pointer;
-}
-
-.radius-slider::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  width: 14px;
-  height: 14px;
-  border-radius: 50%;
-  background: #fff;
-  border: 2px solid #2196f3;
-  cursor: pointer;
-}
-
 /* ── Options ─────────────────────────────────────────────── */
 .options-section {
   padding: 4px 8px 6px;
