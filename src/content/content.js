@@ -5,6 +5,10 @@
   const MAX_HEIGHT = 15000;
   const DPR = window.devicePixelRatio || 1;
 
+  function debounce(fn, ms) {
+    let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); };
+  }
+
   chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     if (msg.type === 'START_FULL_CAPTURE') {
       captureFullPage()
@@ -207,6 +211,7 @@
       function buildVToolbar() {
         vToolbarTools.forEach(t => {
           const btn = document.createElement('button');
+          btn.title = t.id.charAt(0).toUpperCase() + t.id.slice(1) + (({ pencil:'P',line:'L',arrow:'A',rect:'R',circle:'C',marker:'M',text:'T',blur:'B' })[t.id] ? ` (${({ pencil:'P',line:'L',arrow:'A',rect:'R',circle:'C',marker:'M',text:'T',blur:'B' })[t.id]})` : '');
           btn.style.cssText = 'width:26px;height:26px;display:flex;align-items:center;justify-content:center;background:transparent;border:1px solid transparent;border-radius:3px;cursor:pointer;';
           btn.innerHTML = t.icon;
           btn.addEventListener('click', () => {
@@ -227,6 +232,7 @@
         const colorBtn = document.createElement('button');
         colorBtn.style.cssText = 'width:24px;height:24px;border:1px solid #999;border-radius:3px;cursor:pointer;';
         colorBtn.style.background = currentColor;
+        colorBtn.title = 'Color';
         colorBtn.addEventListener('click', (e) => {
           e.stopPropagation();
           showColorPicker(colorBtn);
@@ -237,11 +243,40 @@
         sep2.style.cssText = 'height:0;width:20px;border-bottom:1px solid #666;margin:2px 0;';
         vToolbar.appendChild(sep2);
 
+        // Brush size slider
+        const sizeWrap = document.createElement('div');
+        sizeWrap.style.cssText = 'display:flex;flex-direction:column;align-items:center;gap:1px;padding:2px 0;';
+        const sizeSlider = document.createElement('input');
+        sizeSlider.type = 'range'; sizeSlider.min = 1; sizeSlider.max = 20; sizeSlider.value = brushSize;
+        sizeSlider.title = 'Brush size';
+        sizeSlider.style.cssText = 'width:22px;height:60px;writing-mode:vertical-lr;direction:rtl;cursor:pointer;accent-color:#2196f3;';
+        const sizeLabel2 = document.createElement('span');
+        sizeLabel2.textContent = brushSize;
+        sizeLabel2.style.cssText = 'font:9px sans-serif;color:#333;';
+        sizeSlider.addEventListener('input', () => {
+          brushSize = +sizeSlider.value;
+          sizeLabel2.textContent = brushSize;
+          chrome.storage.local.set({ lastBrushSize: brushSize });
+        });
+        sizeWrap.appendChild(sizeSlider);
+        sizeWrap.appendChild(sizeLabel2);
+        vToolbar.appendChild(sizeWrap);
+
+        const sep3 = document.createElement('div');
+        sep3.style.cssText = 'height:0;width:20px;border-bottom:1px solid #666;margin:2px 0;';
+        vToolbar.appendChild(sep3);
+
         const undoBtn = document.createElement('button');
+        undoBtn.title = 'Undo (Ctrl+Z)';
         undoBtn.style.cssText = 'width:26px;height:26px;display:flex;align-items:center;justify-content:center;background:transparent;border:1px solid transparent;border-radius:3px;cursor:pointer;';
         undoBtn.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#333" stroke-width="2"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>';
         undoBtn.addEventListener('click', () => { drawings.pop(); redrawDrawings(); });
         vToolbar.appendChild(undoBtn);
+
+        // Restore persisted brush size
+        chrome.storage.local.get('lastBrushSize', ({ lastBrushSize }) => {
+          if (lastBrushSize) { brushSize = lastBrushSize; sizeSlider.value = lastBrushSize; sizeLabel2.textContent = lastBrushSize; }
+        });
       }
 
       function buildHToolbar() {
@@ -279,6 +314,19 @@
           });
           popup.appendChild(swatch);
         });
+
+        // Custom color picker
+        const customInput = document.createElement('input');
+        customInput.type = 'color';
+        customInput.value = currentColor;
+        customInput.title = 'Custom color';
+        customInput.style.cssText = 'width:20px;height:20px;border:none;padding:0;cursor:pointer;border-radius:2px;';
+        customInput.addEventListener('input', () => {
+          currentColor = customInput.value;
+          colorBtn.style.background = customInput.value;
+        });
+        customInput.addEventListener('change', () => { popup.remove(); });
+        popup.appendChild(customInput);
 
         vToolbar.appendChild(popup);
       }
@@ -388,16 +436,18 @@
         currentDrawing = { tool: currentTool, color: currentColor, width: brushSize, points: [pt], start: pt, end: pt };
       });
 
+      let _drawRafPending = false;
       drawCanvas.addEventListener('mousemove', e => {
-        if (isDrawing && currentDrawing) {
-          const pt = getDrawPoint(e);
-          if (currentDrawing.tool === 'pencil' || currentDrawing.tool === 'marker') {
-            currentDrawing.points.push(pt);
-          } else {
-            currentDrawing.end = pt;
-          }
-          redrawDrawings();
+        if (!isDrawing || !currentDrawing) return;
+        const pt = getDrawPoint(e);
+        if (currentDrawing.tool === 'pencil' || currentDrawing.tool === 'marker') {
+          currentDrawing.points.push(pt);
+        } else {
+          currentDrawing.end = pt;
         }
+        if (_drawRafPending) return;
+        _drawRafPending = true;
+        requestAnimationFrame(() => { _drawRafPending = false; redrawDrawings(); });
       });
 
       drawCanvas.addEventListener('mouseup', e => {
@@ -605,30 +655,24 @@
         resizing = false;
       });
 
+      let _overlayRafPending = false;
       overlay.addEventListener('mousemove', e => {
-        if (resizing) {
-          handleResize(e);
-          return;
-        }
-        if (dragging) {
-          rect.x = e.clientX - resizeStart.x;
-          rect.y = e.clientY - resizeStart.y;
-          updateSelection();
-          return;
-        }
-        if (selectionComplete) return;
-        if (!selecting) return;
-        endX = e.clientX;
-        endY = e.clientY;
-        rect = {
-          x: Math.min(startX, endX),
-          y: Math.min(startY, endY),
-          w: Math.abs(endX - startX),
-          h: Math.abs(endY - startY)
-        };
-        if (rect.w > 5 && rect.h > 5) {
-          updateSelection();
-        }
+        if (_overlayRafPending) return;
+        _overlayRafPending = true;
+        requestAnimationFrame(() => {
+          _overlayRafPending = false;
+          if (resizing) { handleResize(e); return; }
+          if (dragging) {
+            rect.x = e.clientX - resizeStart.x;
+            rect.y = e.clientY - resizeStart.y;
+            updateSelection();
+            return;
+          }
+          if (selectionComplete || !selecting) return;
+          endX = e.clientX; endY = e.clientY;
+          rect = { x: Math.min(startX, endX), y: Math.min(startY, endY), w: Math.abs(endX - startX), h: Math.abs(endY - startY) };
+          if (rect.w > 5 && rect.h > 5) updateSelection();
+        });
       });
 
       overlay.addEventListener('mouseup', e => {
@@ -682,8 +726,18 @@
       });
 
       // Keyboard
+      const toolKeys = { p:'pencil', l:'line', a:'arrow', r:'rect', c:'circle', m:'marker', t:'text', b:'blur' };
       const onKey = e => {
-        if (e.key === 'Escape') { cleanup(); resolve(null); }
+        if (e.key === 'Escape') { cleanup(); resolve(null); return; }
+        if (textInput || !selectionComplete) return;
+        if (e.ctrlKey && e.key === 'z') { e.preventDefault(); drawings.pop(); redrawDrawings(); return; }
+        const tool = toolKeys[e.key.toLowerCase()];
+        if (tool) {
+          const prev = currentTool;
+          currentTool = tool;
+          if (vToolbarBtns[prev]) vToolbarBtns[prev].style.borderColor = 'transparent';
+          if (vToolbarBtns[tool]) vToolbarBtns[tool].style.borderColor = '#2196f3';
+        }
       };
       document.addEventListener('keydown', onKey);
 
@@ -720,6 +774,12 @@
     const viewportHeight = window.innerHeight;
     const dpr = window.devicePixelRatio || 1;
 
+    // Progress bar
+    const progressBar = document.createElement('div');
+    progressBar.style.cssText = 'position:fixed;top:0;left:0;height:3px;width:0%;background:#2196f3;z-index:2147483647;transition:width 0.15s ease;pointer-events:none;';
+    document.documentElement.appendChild(progressBar);
+    const totalStrips = Math.ceil(totalHeight / viewportHeight);
+
     const strips = [];
     let capturedHeight = 0;
     window.scrollTo(0, 0);
@@ -732,15 +792,17 @@
           resolve(res);
         });
       });
-      if (result.error) throw new Error(result.error);
+      if (result.error) { progressBar.remove(); throw new Error(result.error); }
       const remaining = totalHeight - capturedHeight;
       const stripHeight = Math.min(viewportHeight, remaining);
       strips.push({ dataUrl: result.dataUrl, y: capturedHeight, height: stripHeight });
       capturedHeight += viewportHeight;
+      progressBar.style.width = Math.min(100, (strips.length / totalStrips) * 100) + '%';
       if (capturedHeight < totalHeight) window.scrollTo(0, capturedHeight);
     }
 
     window.scrollTo(originalX, originalY);
+    progressBar.remove();
 
     const canvas = document.createElement('canvas');
     canvas.width = totalWidth * dpr;
@@ -920,6 +982,7 @@
       editorCurrent = { tool: editorTool, color: editorColor, width: editorWidth, points: [pt], start: pt, end: pt };
     });
 
+    let _editorRafPending = false;
     canvas.addEventListener('mousemove', e => {
       if (!eDrawing || !editorCurrent) return;
       const pt = getEPoint(e);
@@ -928,7 +991,9 @@
       } else {
         editorCurrent.end = pt;
       }
-      editorRedraw();
+      if (_editorRafPending) return;
+      _editorRafPending = true;
+      requestAnimationFrame(() => { _editorRafPending = false; editorRedraw(); });
     });
 
     canvas.addEventListener('mouseup', () => {
@@ -990,32 +1055,14 @@
       }
     }
 
-    function editorPixelate(x, y, w, h) {
+    function editorBlurRegion(x, y, w, h) {
       if (w <= 0 || h <= 0) return;
-      const blockSize = 12;
       x = Math.round(x); y = Math.round(y); w = Math.round(w); h = Math.round(h);
-      const imgData = editorCtx.getImageData(x, y, w, h);
-      const d = imgData.data;
-      for (let by = 0; by < h; by += blockSize) {
-        for (let bx = 0; bx < w; bx += blockSize) {
-          let r = 0, g = 0, b = 0, a = 0, count = 0;
-          const bw = Math.min(blockSize, w - bx), bh = Math.min(blockSize, h - by);
-          for (let py = 0; py < bh; py++) {
-            for (let px = 0; px < bw; px++) {
-              const i = ((by + py) * w + (bx + px)) * 4;
-              r += d[i]; g += d[i+1]; b += d[i+2]; a += d[i+3]; count++;
-            }
-          }
-          r = r/count|0; g = g/count|0; b = b/count|0; a = a/count|0;
-          for (let py = 0; py < bh; py++) {
-            for (let px = 0; px < bw; px++) {
-              const i = ((by + py) * w + (bx + px)) * 4;
-              d[i] = r; d[i+1] = g; d[i+2] = b; d[i+3] = a;
-            }
-          }
-        }
-      }
-      editorCtx.putImageData(imgData, x, y);
+      const tmp = new OffscreenCanvas(w, h);
+      const tctx = tmp.getContext('2d');
+      tctx.filter = 'blur(8px)';
+      tctx.drawImage(canvas, x, y, w, h, 0, 0, w, h);
+      editorCtx.drawImage(tmp, x, y);
     }
 
     function editorDrawObj(d) {
@@ -1027,7 +1074,7 @@
       if (d.tool === 'blur') {
         const rx = Math.min(d.start.x, d.end.x), ry = Math.min(d.start.y, d.end.y);
         const rw = Math.abs(d.end.x - d.start.x), rh = Math.abs(d.end.y - d.start.y);
-        editorPixelate(rx, ry, rw, rh);
+        editorBlurRegion(rx, ry, rw, rh);
         return;
       } else if (d.tool === 'pencil' || d.tool === 'marker') {
         ctx.strokeStyle = d.color;
