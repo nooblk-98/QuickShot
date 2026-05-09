@@ -7,62 +7,94 @@
 </head>
 <body>
 
+  <!-- ── Header ─────────────────────────────────────────── -->
+  <header class="header">
+    <div class="header-brand">
+      <svg class="brand-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+        <circle cx="12" cy="13" r="4"/>
+      </svg>
+      <span class="brand-name">QuickShot</span>
+    </div>
+    <span class="version-pill">v1.0.5</span>
+  </header>
+
+  <div class="divider"></div>
+
+  <!-- ── Capture buttons ───────────────────────────────── -->
+  <p class="section-label">Capture Mode</p>
+
   <div class="menu">
 
-    <button id="btn-area" class="menu-btn">
+    <button id="btn-area" class="menu-btn btn-area">
       <svg class="menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
-        <rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>
+        <path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2"/>
+        <rect x="7" y="7" width="10" height="10" rx="1" stroke-dasharray="2 2"/>
       </svg>
-      CAPTURE SELECTED AREA
+      <span>Selected Area</span>
     </button>
 
-    <button id="btn-visible" class="menu-btn">
+    <button id="btn-visible" class="menu-btn btn-visible">
       <svg class="menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
         <circle cx="12" cy="12" r="3"/>
       </svg>
-      CAPTURE VISIBLE AREA
+      <span>Visible Area</span>
     </button>
 
-    <button id="btn-fullpage" class="menu-btn">
+    <button id="btn-fullpage" class="menu-btn btn-fullpage">
       <svg class="menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <rect x="2" y="3" width="20" height="18" rx="2"/>
         <line x1="2" y1="8" x2="22" y2="8"/>
+        <line x1="12" y1="8" x2="12" y2="21"/>
       </svg>
-      CAPTURE FULL PAGE
+      <span>Full Page</span>
     </button>
 
-    <button id="btn-element" class="menu-btn">
+    <button id="btn-element" class="menu-btn btn-element">
       <svg class="menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <path d="M4 4h6v6H4z"/><path d="M14 4h6v6h-6z"/><path d="M4 14h6v6H4z"/>
         <path d="M17 14v6M14 17h6"/>
       </svg>
-      CAPTURE ELEMENT
+      <span>Element</span>
     </button>
 
   </div>
 
+  <div class="divider"></div>
+
+  <!-- ── Options ──────────────────────────────────────── -->
+  <p class="section-label">Options</p>
+
   <div class="options-section">
-    <label class="option-checkbox">
+
+    <label class="option-row">
       <input type="checkbox" id="enable-annotate" />
-      <span class="checkbox-label">Open annotation editor after capture</span>
+      <span class="toggle-track"><span class="toggle-thumb"></span></span>
+      <span class="option-label">Open annotation editor after capture</span>
     </label>
-    <label class="option-checkbox">
+
+    <label class="option-row">
       <input type="checkbox" id="remember-area" />
-      <span class="checkbox-label">Remember last selected area</span>
+      <span class="toggle-track"><span class="toggle-thumb"></span></span>
+      <span class="option-label">Remember last selected area</span>
     </label>
+
   </div>
 
+  <div class="divider"></div>
+
+  <!-- ── Status ───────────────────────────────────────── -->
   <div class="status-area">
     <div id="status" class="status"></div>
   </div>
 
-  <div class="footer">
+  <!-- ── Footer ───────────────────────────────────────── -->
+  <footer class="footer">
     Developed by <a class="footer-link" href="https://github.com/nooblk-98/QuickShot" target="_blank">nooblk</a>
-    &nbsp;·&nbsp;
+    <span class="footer-dot">·</span>
     <a class="footer-link kofi" href="https://ko-fi.com/nooblk98" target="_blank">☕ Support</a>
-  </div>
+  </footer>
 
   <script src="popup.js"></script>
 </body>

@@ -103,13 +103,13 @@
       // Vertical toolbar (right side)
       const vToolbar = document.createElement('div');
       vToolbar.id = '__quickshot-vtoolbar';
-      vToolbar.style.cssText = 'position:absolute;right:-36px;top:0;display:none;flex-direction:column;gap:1px;padding:3px;background:linear-gradient(to right,#fafbfb,#cbcec0);border-radius:4px;box-shadow:0 2px 6px rgba(0,0,0,0.3);';
+      vToolbar.style.cssText = 'position:absolute;right:-42px;top:0;display:none;flex-direction:column;gap:2px;padding:5px 4px;background:#1e1e2a;border:1px solid rgba(255,255,255,0.08);border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,0.5);';
       sel.appendChild(vToolbar);
 
       // Horizontal toolbar (bottom)
       const hToolbar = document.createElement('div');
       hToolbar.id = '__quickshot-htoolbar';
-      hToolbar.style.cssText = 'position:absolute;bottom:-36px;left:0;display:none;flex-direction:row;gap:1px;padding:3px;background:linear-gradient(to bottom,#fafbfb,#cbcec0);border-radius:4px;box-shadow:0 2px 6px rgba(0,0,0,0.3);white-space:nowrap;';
+      hToolbar.style.cssText = 'position:absolute;bottom:-40px;left:0;display:none;flex-direction:row;gap:2px;padding:4px 6px;background:#1e1e2a;border:1px solid rgba(255,255,255,0.08);border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,0.5);white-space:nowrap;';
       sel.appendChild(hToolbar);
 
       // Show full-page mask immediately (before any selection)
@@ -195,15 +195,16 @@
         buildHToolbar();
       }
 
+      const SVG = (paths) => `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#c0c0c0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:block;flex-shrink:0;pointer-events:none;">${paths}</svg>`;
       const vToolbarTools = [
-        { id: 'pencil', icon: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#333" stroke-width="2"><path d="M17 3a2.85 2.85 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>' },
-        { id: 'line', icon: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#333" stroke-width="2"><line x1="5" y1="19" x2="19" y2="5"/></svg>' },
-        { id: 'arrow', icon: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#333" stroke-width="2"><line x1="5" y1="19" x2="19" y2="5"/><polyline points="10 5 19 5 19 14"/></svg>' },
-        { id: 'rect', icon: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#333" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>' },
-        { id: 'circle', icon: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#333" stroke-width="2"><circle cx="12" cy="12" r="9"/></svg>' },
-        { id: 'marker', icon: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#333" stroke-width="2"><path d="m9 11-6 6v3h9l3-3"/><path d="m22 12-4.6 4.6a2 2 0 0 1-2.8 0l-5.2-5.2a2 2 0 0 1 0-2.8L14 4"/></svg>' },
-        { id: 'text', icon: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#333" stroke-width="2"><polyline points="4 7 4 4 20 4 20 7"/><line x1="9" y1="20" x2="15" y2="20"/><line x1="12" y1="4" x2="12" y2="20"/></svg>' },
-        { id: 'blur', icon: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#333" stroke-width="2"><circle cx="12" cy="12" r="9"/><line x1="12" y1="3" x2="12" y2="21"/><line x1="3" y1="12" x2="21" y2="12"/><path d="M12 3a9 9 0 0 1 0 18" stroke-dasharray="3 2"/></svg>' },
+        { id: 'pencil', icon: SVG('<path d="M17 3a2.85 2.85 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/>') },
+        { id: 'line',   icon: SVG('<line x1="5" y1="19" x2="19" y2="5"/>') },
+        { id: 'arrow',  icon: SVG('<line x1="5" y1="19" x2="19" y2="5"/><polyline points="10 5 19 5 19 14"/>') },
+        { id: 'rect',   icon: SVG('<rect x="3" y="3" width="18" height="18" rx="2"/>') },
+        { id: 'circle', icon: SVG('<circle cx="12" cy="12" r="9"/>') },
+        { id: 'marker', icon: SVG('<path d="m9 11-6 6v3h9l3-3"/><path d="m22 12-4.6 4.6a2 2 0 0 1-2.8 0l-5.2-5.2a2 2 0 0 1 0-2.8L14 4"/>') },
+        { id: 'text',   icon: SVG('<polyline points="4 7 4 4 20 4 20 7"/><line x1="9" y1="20" x2="15" y2="20"/><line x1="12" y1="4" x2="12" y2="20"/>') },
+        { id: 'blur',   icon: SVG('<circle cx="12" cy="12" r="9"/><line x1="12" y1="3" x2="12" y2="21"/><line x1="3" y1="12" x2="21" y2="12"/><path d="M12 3a9 9 0 0 1 0 18" stroke-dasharray="3 2"/>') },
       ];
       // Map tool id → button element for O(1) active-state updates
       const vToolbarBtns = {};
@@ -212,25 +213,32 @@
         vToolbarTools.forEach(t => {
           const btn = document.createElement('button');
           btn.title = t.id.charAt(0).toUpperCase() + t.id.slice(1) + (({ pencil:'P',line:'L',arrow:'A',rect:'R',circle:'C',marker:'M',text:'T',blur:'B' })[t.id] ? ` (${({ pencil:'P',line:'L',arrow:'A',rect:'R',circle:'C',marker:'M',text:'T',blur:'B' })[t.id]})` : '');
-          btn.style.cssText = 'width:26px;height:26px;display:flex;align-items:center;justify-content:center;background:transparent;border:1px solid transparent;border-radius:3px;cursor:pointer;';
+          btn.style.cssText = 'width:28px;height:28px;display:flex;align-items:center;justify-content:center;background:transparent;border:1px solid transparent;border-radius:5px;cursor:pointer;transition:background 0.12s;';
+          btn.addEventListener('mouseenter', () => { if (btn.style.borderColor === 'transparent') btn.style.background = 'rgba(255,255,255,0.08)'; });
+          btn.addEventListener('mouseleave', () => { if (btn.style.borderColor === 'transparent') btn.style.background = 'transparent'; });
           btn.innerHTML = t.icon;
+          const svg = btn.querySelector('svg');
+          if (svg) { svg.style.display = 'block'; svg.style.flexShrink = '0'; }
           btn.addEventListener('click', () => {
             const prev = currentTool;
             currentTool = currentTool === t.id ? 'pencil' : t.id;
             vToolbarBtns[prev].style.borderColor = 'transparent';
+            vToolbarBtns[prev].style.background = 'transparent';
             vToolbarBtns[currentTool].style.borderColor = '#2196f3';
+            vToolbarBtns[currentTool].style.background = 'rgba(33,150,243,0.15)';
           });
           vToolbarBtns[t.id] = btn;
           vToolbar.appendChild(btn);
         });
         vToolbarBtns[currentTool].style.borderColor = '#2196f3';
+        vToolbarBtns[currentTool].style.background = 'rgba(33,150,243,0.15)';
 
         const sep = document.createElement('div');
-        sep.style.cssText = 'height:0;width:20px;border-bottom:1px solid #666;margin:2px 0;';
+        sep.style.cssText = 'height:1px;width:20px;background:rgba(255,255,255,0.1);margin:3px auto;';
         vToolbar.appendChild(sep);
 
         const colorBtn = document.createElement('button');
-        colorBtn.style.cssText = 'width:24px;height:24px;border:1px solid #999;border-radius:3px;cursor:pointer;';
+        colorBtn.style.cssText = 'width:24px;height:24px;border:2px solid rgba(255,255,255,0.25);border-radius:4px;cursor:pointer;margin:0 auto;';
         colorBtn.style.background = currentColor;
         colorBtn.title = 'Color';
         colorBtn.addEventListener('click', (e) => {
@@ -240,19 +248,19 @@
         vToolbar.appendChild(colorBtn);
 
         const sep2 = document.createElement('div');
-        sep2.style.cssText = 'height:0;width:20px;border-bottom:1px solid #666;margin:2px 0;';
+        sep2.style.cssText = 'height:1px;width:20px;background:rgba(255,255,255,0.1);margin:3px auto;';
         vToolbar.appendChild(sep2);
 
         // Brush size slider
         const sizeWrap = document.createElement('div');
-        sizeWrap.style.cssText = 'display:flex;flex-direction:column;align-items:center;gap:1px;padding:2px 0;';
+        sizeWrap.style.cssText = 'display:flex;flex-direction:column;align-items:center;gap:2px;padding:2px 0;';
         const sizeSlider = document.createElement('input');
         sizeSlider.type = 'range'; sizeSlider.min = 1; sizeSlider.max = 20; sizeSlider.value = brushSize;
         sizeSlider.title = 'Brush size';
-        sizeSlider.style.cssText = 'width:22px;height:60px;writing-mode:vertical-lr;direction:rtl;cursor:pointer;accent-color:#2196f3;';
+        sizeSlider.style.cssText = 'width:22px;height:56px;writing-mode:vertical-lr;direction:rtl;cursor:pointer;accent-color:#2196f3;';
         const sizeLabel2 = document.createElement('span');
         sizeLabel2.textContent = brushSize;
-        sizeLabel2.style.cssText = 'font:9px sans-serif;color:#333;';
+        sizeLabel2.style.cssText = 'font:9px -apple-system,sans-serif;color:rgba(255,255,255,0.55);';
         sizeSlider.addEventListener('input', () => {
           brushSize = +sizeSlider.value;
           sizeLabel2.textContent = brushSize;
@@ -263,13 +271,15 @@
         vToolbar.appendChild(sizeWrap);
 
         const sep3 = document.createElement('div');
-        sep3.style.cssText = 'height:0;width:20px;border-bottom:1px solid #666;margin:2px 0;';
+        sep3.style.cssText = 'height:1px;width:20px;background:rgba(255,255,255,0.1);margin:3px auto;';
         vToolbar.appendChild(sep3);
 
         const undoBtn = document.createElement('button');
         undoBtn.title = 'Undo (Ctrl+Z)';
-        undoBtn.style.cssText = 'width:26px;height:26px;display:flex;align-items:center;justify-content:center;background:transparent;border:1px solid transparent;border-radius:3px;cursor:pointer;';
-        undoBtn.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#333" stroke-width="2"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>';
+        undoBtn.style.cssText = 'width:28px;height:28px;display:flex;align-items:center;justify-content:center;background:transparent;border:1px solid transparent;border-radius:5px;cursor:pointer;';
+        undoBtn.innerHTML = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#c0c0c0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:block;flex-shrink:0;pointer-events:none;"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>`;
+        undoBtn.addEventListener('mouseenter', () => undoBtn.style.background = 'rgba(255,255,255,0.08)');
+        undoBtn.addEventListener('mouseleave', () => undoBtn.style.background = 'transparent');
         undoBtn.addEventListener('click', () => { drawings.pop(); redrawDrawings(); });
         vToolbar.appendChild(undoBtn);
 
@@ -281,15 +291,18 @@
 
       function buildHToolbar() {
         hToolbar.innerHTML = '';
+        const hSVG = (stroke, paths) => `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="${stroke}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:block;flex-shrink:0;pointer-events:none;">${paths}</svg>`;
         const actions = [
-          { id: 'copy', icon: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#333" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>', label: 'Copy' },
-          { id: 'save', icon: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#333" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>', label: 'Save' },
-          { id: 'close', icon: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#f44" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>', label: 'Close' },
+          { id: 'copy',  icon: hSVG('#c0c0c0', '<rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>'), label: 'Copy' },
+          { id: 'save',  icon: hSVG('#c0c0c0', '<path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/>'), label: 'Save' },
+          { id: 'close', icon: hSVG('#f87171', '<line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>'), label: 'Close' },
         ];
 
         actions.forEach(a => {
           const btn = document.createElement('button');
-          btn.style.cssText = 'height:26px;padding:0 8px;display:flex;align-items:center;gap:4px;background:transparent;border:1px solid transparent;border-radius:3px;cursor:pointer;font:11px -apple-system,sans-serif;color:#333;';
+          btn.style.cssText = 'height:28px;padding:0 10px;display:flex;align-items:center;gap:5px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:5px;cursor:pointer;font:11px -apple-system,sans-serif;color:rgba(255,255,255,0.8);';
+          btn.addEventListener('mouseenter', () => btn.style.background = 'rgba(255,255,255,0.12)');
+          btn.addEventListener('mouseleave', () => btn.style.background = 'rgba(255,255,255,0.05)');
           btn.innerHTML = a.icon + '<span>' + a.label + '</span>';
           btn.addEventListener('click', () => handleAction(a.id));
           hToolbar.appendChild(btn);
@@ -830,17 +843,20 @@
 
     // Bottom action bar
     const hBar = document.createElement('div');
-    hBar.style.cssText = 'display:flex;align-items:center;gap:4px;padding:6px 12px;background:linear-gradient(to bottom,#fafbfb,#cbcec0);box-shadow:0 -2px 6px rgba(0,0,0,0.2);';
+    hBar.style.cssText = 'display:flex;align-items:center;gap:6px;padding:8px 14px;background:#1e1e2a;border-top:1px solid rgba(255,255,255,0.08);';
 
+    const aSVG = (stroke, paths) => `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="${stroke}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:block;flex-shrink:0;pointer-events:none;">${paths}</svg>`;
     const actions = [
-      { id: 'save', icon: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#333" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>', label: 'Save' },
-      { id: 'copy', icon: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#333" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>', label: 'Copy' },
-      { id: 'close', icon: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#f44" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>', label: 'Close' },
+      { id: 'save',  icon: aSVG('#c0c0c0', '<path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/>'), label: 'Save' },
+      { id: 'copy',  icon: aSVG('#c0c0c0', '<rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>'), label: 'Copy' },
+      { id: 'close', icon: aSVG('#f87171', '<line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>'), label: 'Close' },
     ];
 
     actions.forEach(a => {
       const btn = document.createElement('button');
-      btn.style.cssText = 'height:28px;padding:0 10px;display:flex;align-items:center;gap:4px;background:transparent;border:1px solid transparent;border-radius:3px;cursor:pointer;font:12px -apple-system,sans-serif;color:#333;';
+      btn.style.cssText = 'height:30px;padding:0 12px;display:flex;align-items:center;gap:5px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:6px;cursor:pointer;font:12px -apple-system,sans-serif;color:rgba(255,255,255,0.8);';
+      btn.addEventListener('mouseenter', () => btn.style.background = 'rgba(255,255,255,0.12)');
+      btn.addEventListener('mouseleave', () => btn.style.background = 'rgba(255,255,255,0.05)');
       btn.innerHTML = a.icon + '<span>' + a.label + '</span>';
       btn.addEventListener('click', () => {
         if (a.id === 'close') { overlay.remove(); return; }
@@ -864,17 +880,18 @@
 
     // Right-side toolbar (inside overlay, absolute position)
     const vBar = document.createElement('div');
-    vBar.style.cssText = 'position:absolute;right:20px;top:20px;display:flex;flex-direction:column;gap:2px;padding:4px;background:linear-gradient(to right,#fafbfb,#cbcec0);border-radius:4px;box-shadow:0 2px 8px rgba(0,0,0,0.3);z-index:10;';
+    vBar.style.cssText = 'position:absolute;right:20px;top:20px;display:flex;flex-direction:column;gap:2px;padding:5px 4px;background:#1e1e2a;border:1px solid rgba(255,255,255,0.08);border-radius:8px;box-shadow:0 4px 20px rgba(0,0,0,0.5);z-index:10;';
 
+    const eSVG = (paths) => `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#c0c0c0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:block;flex-shrink:0;pointer-events:none;">${paths}</svg>`;
     const eTools = [
-      { id: 'pencil', icon: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#333" stroke-width="2"><path d="M17 3a2.85 2.85 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>' },
-      { id: 'line', icon: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#333" stroke-width="2"><line x1="5" y1="19" x2="19" y2="5"/></svg>' },
-      { id: 'arrow', icon: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#333" stroke-width="2"><line x1="5" y1="19" x2="19" y2="5"/><polyline points="10 5 19 5 19 14"/></svg>' },
-      { id: 'rect', icon: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#333" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>' },
-      { id: 'circle', icon: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#333" stroke-width="2"><circle cx="12" cy="12" r="9"/></svg>' },
-      { id: 'marker', icon: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#333" stroke-width="2"><path d="m9 11-6 6v3h9l3-3"/><path d="m22 12-4.6 4.6a2 2 0 0 1-2.8 0l-5.2-5.2a2 2 0 0 1 0-2.8L14 4"/></svg>' },
-      { id: 'text', icon: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#333" stroke-width="2"><polyline points="4 7 4 4 20 4 20 7"/><line x1="9" y1="20" x2="15" y2="20"/><line x1="12" y1="4" x2="12" y2="20"/></svg>' },
-      { id: 'blur', icon: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#333" stroke-width="2"><circle cx="12" cy="12" r="9"/><line x1="12" y1="3" x2="12" y2="21"/><line x1="3" y1="12" x2="21" y2="12"/><path d="M12 3a9 9 0 0 1 0 18" stroke-dasharray="3 2"/></svg>' },
+      { id: 'pencil', icon: eSVG('<path d="M17 3a2.85 2.85 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/>') },
+      { id: 'line',   icon: eSVG('<line x1="5" y1="19" x2="19" y2="5"/>') },
+      { id: 'arrow',  icon: eSVG('<line x1="5" y1="19" x2="19" y2="5"/><polyline points="10 5 19 5 19 14"/>') },
+      { id: 'rect',   icon: eSVG('<rect x="3" y="3" width="18" height="18" rx="2"/>') },
+      { id: 'circle', icon: eSVG('<circle cx="12" cy="12" r="9"/>') },
+      { id: 'marker', icon: eSVG('<path d="m9 11-6 6v3h9l3-3"/><path d="m22 12-4.6 4.6a2 2 0 0 1-2.8 0l-5.2-5.2a2 2 0 0 1 0-2.8L14 4"/>') },
+      { id: 'text',   icon: eSVG('<polyline points="4 7 4 4 20 4 20 7"/><line x1="9" y1="20" x2="15" y2="20"/><line x1="12" y1="4" x2="12" y2="20"/>') },
+      { id: 'blur',   icon: eSVG('<circle cx="12" cy="12" r="9"/><line x1="12" y1="3" x2="12" y2="21"/><line x1="3" y1="12" x2="21" y2="12"/><path d="M12 3a9 9 0 0 1 0 18" stroke-dasharray="3 2"/>') },
     ];
 
     let editorTool = 'pencil';
@@ -888,26 +905,35 @@
     let eDrawing = false;
     let eTextInput = null;
 
-    eTools.forEach(t => {
+    const eToolBtns = [];
+    eTools.forEach((t, idx) => {
       const btn = document.createElement('button');
-      btn.style.cssText = `width:26px;height:26px;display:flex;align-items:center;justify-content:center;background:transparent;border:1px solid ${t.id === editorTool ? '#2196f3' : 'transparent'};border-radius:3px;cursor:pointer;`;
+      const isActive = t.id === editorTool;
+      btn.style.cssText = `width:28px;height:28px;display:flex;align-items:center;justify-content:center;background:${isActive ? 'rgba(33,150,243,0.15)' : 'transparent'};border:1px solid ${isActive ? '#2196f3' : 'transparent'};border-radius:5px;cursor:pointer;`;
+      btn.addEventListener('mouseenter', () => { if (btn.style.borderColor === 'transparent') btn.style.background = 'rgba(255,255,255,0.08)'; });
+      btn.addEventListener('mouseleave', () => { if (btn.style.borderColor === 'transparent') btn.style.background = 'transparent'; });
       btn.innerHTML = t.icon;
+      const esvg = btn.querySelector('svg');
+      if (esvg) { esvg.style.display = 'block'; esvg.style.flexShrink = '0'; }
       btn.addEventListener('click', () => {
         if (eTextInput) finishEditorText();
         editorTool = editorTool === t.id ? 'pencil' : t.id;
-        eTools.forEach((_, i) => {
-          vBar.children[i].style.borderColor = eTools[i].id === editorTool ? '#2196f3' : 'transparent';
+        eToolBtns.forEach((b, i) => {
+          const active = eTools[i].id === editorTool;
+          b.style.borderColor = active ? '#2196f3' : 'transparent';
+          b.style.background = active ? 'rgba(33,150,243,0.15)' : 'transparent';
         });
       });
       vBar.appendChild(btn);
+      eToolBtns.push(btn);
     });
 
     const sep = document.createElement('div');
-    sep.style.cssText = 'height:0;width:20px;border-bottom:1px solid #666;margin:2px 0;';
+    sep.style.cssText = 'height:1px;width:20px;background:rgba(255,255,255,0.1);margin:3px auto;';
     vBar.appendChild(sep);
 
     const colorBtn = document.createElement('div');
-    colorBtn.style.cssText = `width:24px;height:24px;border:1px solid #999;border-radius:3px;cursor:pointer;background:${editorColor};`;
+    colorBtn.style.cssText = `width:24px;height:24px;border:2px solid rgba(255,255,255,0.25);border-radius:4px;cursor:pointer;background:${editorColor};margin:0 auto;`;
     colorBtn.addEventListener('click', e => {
       e.stopPropagation();
       const popup = document.createElement('div');
@@ -931,12 +957,14 @@
     vBar.appendChild(colorBtn);
 
     const sep2 = document.createElement('div');
-    sep2.style.cssText = 'height:0;width:20px;border-bottom:1px solid #666;margin:2px 0;';
+    sep2.style.cssText = 'height:1px;width:20px;background:rgba(255,255,255,0.1);margin:3px auto;';
     vBar.appendChild(sep2);
 
     const undoBtn = document.createElement('button');
-    undoBtn.style.cssText = 'width:26px;height:26px;display:flex;align-items:center;justify-content:center;background:transparent;border:1px solid transparent;border-radius:3px;cursor:pointer;';
-    undoBtn.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#333" stroke-width="2"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>';
+    undoBtn.style.cssText = 'width:28px;height:28px;display:flex;align-items:center;justify-content:center;background:transparent;border:1px solid transparent;border-radius:5px;cursor:pointer;';
+    undoBtn.innerHTML = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#c0c0c0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:block;flex-shrink:0;pointer-events:none;"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>`;
+    undoBtn.addEventListener('mouseenter', () => undoBtn.style.background = 'rgba(255,255,255,0.08)');
+    undoBtn.addEventListener('mouseleave', () => undoBtn.style.background = 'transparent');
     undoBtn.addEventListener('click', () => { editorDrawings.pop(); editorRedraw(); });
     vBar.appendChild(undoBtn);
 
