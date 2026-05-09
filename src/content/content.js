@@ -839,11 +839,33 @@
 
   function showAnnotationEditor(dataUrl) {
     const overlay = document.createElement('div');
-    overlay.style.cssText = 'position:fixed;inset:0;z-index:2147483647;background:#1a1a2e;display:flex;flex-direction:column;';
+    overlay.style.cssText = 'position:fixed;inset:0;z-index:2147483647;background:#13131b;display:flex;flex-direction:column;';
 
-    // Bottom action bar
+    // ── Top header ──────────────────────────────────────────────────────────
+    const topBar = document.createElement('div');
+    topBar.style.cssText = 'display:flex;align-items:center;justify-content:space-between;padding:0 16px;height:42px;background:#1e1e2a;border-bottom:1px solid rgba(255,255,255,0.07);flex-shrink:0;';
+    const topTitle = document.createElement('span');
+    topTitle.textContent = 'Annotation Editor';
+    topTitle.style.cssText = 'font:600 13px -apple-system,sans-serif;color:rgba(255,255,255,0.7);letter-spacing:0.2px;';
+    const topHint = document.createElement('span');
+    topHint.textContent = 'Esc to close';
+    topHint.style.cssText = 'font:11px -apple-system,sans-serif;color:rgba(255,255,255,0.28);';
+    topBar.appendChild(topTitle);
+    topBar.appendChild(topHint);
+    overlay.appendChild(topBar);
+
+    // ── Canvas area ─────────────────────────────────────────────────────────
+    const canvasArea = document.createElement('div');
+    canvasArea.style.cssText = 'flex:1;display:flex;align-items:center;justify-content:center;overflow:auto;padding:16px 60px 16px 16px;position:relative;';
+
+    const canvas = document.createElement('canvas');
+    canvas.style.cssText = 'box-shadow:0 8px 32px rgba(0,0,0,0.6);cursor:crosshair;border-radius:2px;';
+    canvasArea.appendChild(canvas);
+    overlay.appendChild(canvasArea);
+
+    // ── Bottom action bar ───────────────────────────────────────────────────
     const hBar = document.createElement('div');
-    hBar.style.cssText = 'display:flex;align-items:center;gap:6px;padding:8px 14px;background:#1e1e2a;border-top:1px solid rgba(255,255,255,0.08);';
+    hBar.style.cssText = 'display:flex;align-items:center;gap:6px;padding:8px 16px;background:#1e1e2a;border-top:1px solid rgba(255,255,255,0.07);flex-shrink:0;';
 
     const aSVG = (stroke, paths) => `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="${stroke}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:block;flex-shrink:0;pointer-events:none;">${paths}</svg>`;
     const actions = [
@@ -854,9 +876,9 @@
 
     actions.forEach(a => {
       const btn = document.createElement('button');
-      btn.style.cssText = 'height:30px;padding:0 12px;display:flex;align-items:center;gap:5px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:6px;cursor:pointer;font:12px -apple-system,sans-serif;color:rgba(255,255,255,0.8);';
-      btn.addEventListener('mouseenter', () => btn.style.background = 'rgba(255,255,255,0.12)');
-      btn.addEventListener('mouseleave', () => btn.style.background = 'rgba(255,255,255,0.05)');
+      btn.style.cssText = 'height:30px;padding:0 14px;display:flex;align-items:center;gap:6px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:6px;cursor:pointer;font:12px -apple-system,sans-serif;color:rgba(255,255,255,0.8);';
+      btn.addEventListener('mouseenter', () => btn.style.background = 'rgba(255,255,255,0.13)');
+      btn.addEventListener('mouseleave', () => btn.style.background = 'rgba(255,255,255,0.06)');
       btn.innerHTML = a.icon + '<span>' + a.label + '</span>';
       btn.addEventListener('click', () => {
         if (a.id === 'close') { overlay.remove(); return; }
@@ -867,20 +889,11 @@
     });
 
     overlay.appendChild(hBar);
-
-    // Canvas area
-    const canvasArea = document.createElement('div');
-    canvasArea.style.cssText = 'flex:1;display:flex;align-items:center;justify-content:center;overflow:auto;padding:20px;position:relative;';
-
-    const canvas = document.createElement('canvas');
-    canvas.style.cssText = 'box-shadow:0 4px 24px rgba(0,0,0,0.5);cursor:crosshair;';
-    canvasArea.appendChild(canvas);
-    overlay.appendChild(canvasArea);
     document.body.appendChild(overlay);
 
     // Right-side toolbar (inside overlay, absolute position)
     const vBar = document.createElement('div');
-    vBar.style.cssText = 'position:absolute;right:20px;top:20px;display:flex;flex-direction:column;gap:2px;padding:5px 4px;background:#1e1e2a;border:1px solid rgba(255,255,255,0.08);border-radius:8px;box-shadow:0 4px 20px rgba(0,0,0,0.5);z-index:10;';
+    vBar.style.cssText = 'position:fixed;right:14px;top:58px;display:flex;flex-direction:column;gap:2px;padding:5px 4px;background:#1e1e2a;border:1px solid rgba(255,255,255,0.08);border-radius:8px;box-shadow:0 4px 20px rgba(0,0,0,0.5);z-index:2147483647;';
 
     const eSVG = (paths) => `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#c0c0c0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:block;flex-shrink:0;pointer-events:none;">${paths}</svg>`;
     const eTools = [
