@@ -988,16 +988,37 @@
     let imgLoaded = false;
     img.onload = () => {
       imgW = img.width;
-      imgH = img.height;
+      const fullH = img.height;
+
+      // Auto-crop dark trailing rows at the bottom
+      // Downsample to a small strip for fast brightness analysis
+      const sw = Math.min(imgW, 160), sh = Math.min(fullH, 160);
+      const sc = document.createElement('canvas');
+      sc.width = sw; sc.height = sh;
+      const sx = sc.getContext('2d');
+      sx.drawImage(img, 0, 0, imgW, fullH, 0, 0, sw, sh);
+      const sd = sx.getImageData(0, 0, sw, sh).data;
+      let cropRatio = 1;
+      for (let y = sh - 1; y > sh * 0.3; y--) {
+        let bright = 0;
+        for (let x = 0; x < sw; x++) {
+          const i = (y * sw + x) * 4;
+          bright += (sd[i] + sd[i + 1] + sd[i + 2]) / 3;
+        }
+        if (bright / sw > 20) { cropRatio = (y + 2) / sh; break; }
+      }
+      imgH = Math.min(fullH, Math.round(fullH * cropRatio));
+
       canvas.width = imgW;
       canvas.height = imgH;
-      const maxW = window.innerWidth - 100;
-      const maxH = window.innerHeight - 100;
+      // topBar(42) + hBar(46) + canvasArea padding(32) + margin(20) = 140
+      const maxW = window.innerWidth - 80;
+      const maxH = window.innerHeight - 140;
       dispScale = Math.min(1, maxW / imgW, maxH / imgH);
       canvas.style.width = (imgW * dispScale) + 'px';
       canvas.style.height = (imgH * dispScale) + 'px';
       editorCtx = canvas.getContext('2d');
-      editorCtx.drawImage(img, 0, 0);
+      editorCtx.drawImage(img, 0, 0, imgW, imgH, 0, 0, imgW, imgH);
       imgLoaded = true;
     };
     img.src = dataUrl;
@@ -1088,7 +1109,7 @@
     function editorRedraw() {
       if (!editorCtx || !imgLoaded) return;
       editorCtx.clearRect(0, 0, canvas.width, canvas.height);
-      editorCtx.drawImage(img, 0, 0);
+      editorCtx.drawImage(img, 0, 0, imgW, imgH, 0, 0, canvas.width, canvas.height);
       editorDrawings.forEach(d => editorDrawObj(d));
       if (editorCurrent) {
         if (editorCurrent.tool === 'blur') editorBlurPreview(editorCurrent);
